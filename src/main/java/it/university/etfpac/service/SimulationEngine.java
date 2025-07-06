@@ -180,6 +180,71 @@ public class SimulationEngine {
         return maxDrawdown;
     }
 
+    public List<SimulationData> runSimulationWithAllocations(Simulation simulation, List<SimulationAllocation> allocations) {
+        log.info("Esecuzione simulazione con allocazioni temporanee");
+
+        List<SimulationData> simulationData = new ArrayList<>();
+
+        // Parametri di mercato
+        MarketFactors marketFactors = new MarketFactors();
+
+        double totalValue = simulation.getInitialAmount();
+        double totalInvested = simulation.getInitialAmount();
+
+        for (int month = 0; month <= simulation.getInvestmentPeriod(); month++) {
+            // Calcola shock di mercato casuale
+            double marketShock = Math.random() < 0.05 ? (Math.random() - 0.5) * 0.3 : 0;
+            double inflationAdjustment = Math.pow(1 + marketFactors.getInflation() / 12, month);
+
+            double monthlyValue = 0;
+            double monthlyReturn = 0;
+
+            // Calcola performance per ogni ETF nell'allocazione
+            for (SimulationAllocation allocation : allocations) {
+                ETF etf = allocation.getEtf();
+                double percentage = allocation.getPercentage();
+
+                if (percentage > 0) {
+                    double baseReturn = (etf.getFiveYear() / 100) / 12; // Rendimento mensile atteso
+                    double volatility = calculateVolatility(etf.getRisk());
+                    double randomFactor = (Math.random() - 0.5) * volatility + marketShock;
+                    double monthlyPerformance = baseReturn + randomFactor;
+
+                    double etfValue = (totalValue * percentage / 100) * (1 + monthlyPerformance);
+                    monthlyValue += etfValue;
+                    monthlyReturn += monthlyPerformance * (percentage / 100);
+                }
+            }
+
+            // Calcola investimento mensile con strategia selezionata
+            double monthlyInvestment = month == 0 ? simulation.getInitialAmount() :
+                    calculateMonthlyInvestment(simulation, month, monthlyReturn, totalValue, totalInvested);
+
+            if (month > 0) {
+                totalInvested += monthlyInvestment;
+                totalValue += monthlyInvestment;
+            }
+
+            totalValue = monthlyValue > 0 ? monthlyValue : totalValue;
+
+            // Crea punto dati
+            SimulationData dataPoint = new SimulationData();
+            dataPoint.setMonth(month);
+            dataPoint.setTotalValue(totalValue);
+            dataPoint.setTotalInvested(totalInvested);
+            dataPoint.setMonthlyInvestment(monthlyInvestment);
+            dataPoint.setMonthlyReturn(monthlyReturn * 100);
+            dataPoint.setCumulativeReturn(((totalValue - totalInvested) / totalInvested) * 100);
+            dataPoint.setInflationAdjustedValue(totalValue / inflationAdjustment);
+            dataPoint.setSharpeRatio(month > 12 ? (monthlyReturn - 0.02) / 0.1 : 0.0);
+
+            simulationData.add(dataPoint);
+        }
+
+        log.info("Simulazione temporanea completata");
+        return simulationData;
+    }
+
     // Classi helper
     private static class MarketFactors {
         private final double inflation = 0.02;
