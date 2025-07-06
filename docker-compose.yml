@@ -1,0 +1,91 @@
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: etfpac-postgres
+    environment:
+      POSTGRES_DB: etfpac_db
+      POSTGRES_USER: etfpac_user
+      POSTGRES_PASSWORD: etfpac_password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init-scripts:/docker-entrypoint-initdb.V5__Add_portfolio_id_to_simulations.sql
+    networks:
+      - etfpac-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U etfpac_user -V5__Add_portfolio_id_to_simulations.sql etfpac_db"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  redis:
+    image: redis:7-alpine
+    container_name: etfpac-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - etfpac-network
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  app:
+    build:
+      context: .
+      dockerfile: docker/docker/Dockerfile
+
+
+
+
+    container_name: etfpac-app
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: etfpac_db
+      DB_USERNAME: etfpac_user
+      DB_PASSWORD: etfpac_password
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+    ports:
+      - "8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - etfpac-network
+    volumes:
+      - app_logs:/app/logs
+    restart: unless-stopped
+
+  nginx:
+    image: nginx:alpine
+    container_name: etfpac-nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/ssl:/etc/nginx/ssl:ro
+    depends_on:
+      - app
+    networks:
+      - etfpac-network
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  redis_data:
+  app_logs:
+
+networks:
+  etfpac-network:
+    driver: bridge

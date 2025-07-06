@@ -1,0 +1,17 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: etf-pac-simulator-backend
+
+  datasource:
+    url: jdbc:postgresql://localhost:5432/etf_pac_db
+    username: etf_user
+    password: etf_password
+    driver-class-name: org.postgresql.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
