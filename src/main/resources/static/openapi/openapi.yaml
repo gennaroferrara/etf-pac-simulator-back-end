@@ -1,0 +1,1745 @@
+openapi: 3.0.3
+info:
+  title: ETF PAC Simulator API
+  description: |
+    API REST per simulazione di Piani di Accumulo Capitale (PAC) con ETF.
+    
+    ## Funzionalità principali:
+    - Gestione portfolio ETF
+    - Simulazioni di investimento con diverse strategie
+    - Backtesting storico
+    - Analisi rischio/rendimento
+    - Confronto strategie di investimento
+    
+    ## Autenticazione:
+    Attualmente l'API non richiede autenticazione (demo mode)
+  version: 1.0.0
+  contact:
+    name:
+    email: gennaro.ferrara@pegaso.it
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+
+servers:
+  - url: http://localhost:8080/api
+    description: Development server
+  - url: https://api.etfpac.university.it/api
+    description: Production server
+
+tags:
+  - name: ETF Management
+    description: Gestione e consultazione ETF disponibili
+  - name: Portfolio Management
+    description: Gestione portfolio di investimento
+  - name: Simulation Management
+    description: Esecuzione e gestione simulazioni
+  - name: Backtesting
+    description: Backtesting storico delle strategie
+  - name: User Management
+    description: Gestione utenti demo
+
+paths:
+  # ==================== ETF ENDPOINTS ====================
+  /v1/etfs:
+    get:
+      tags:
+        - ETF Management
+      summary: Lista tutti gli ETF
+      description: Restituisce l'elenco completo degli ETF disponibili per l'investimento
+      operationId: getAllETFs
+      responses:
+        '200':
+          description: Lista ETF recuperata con successo
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponseETFList'
+              example:
+                success: true
+                message: "Trovati 10 ETF"
+                data:
+                  - id: "world_equity"
+                    name: "FTSE Developed World UCITS ETF"
+                    ticker: "VWCE"
+                    expense: 0.22
+                    risk: "high"
+                    sector: "Global Equity"
+                    aum: "4.2B"
+                    dividend: "1.8%"
+                    beta: 0.98
+                    sharpe: 0.85
+                    maxDrawdown: -34.2
+                    ytd: 12.5
+                    oneYear: 18.3
+                    threeYear: 8.7
+                    fiveYear: 11.2
+
+  /v1/etfs/{id}:
+    get:
+      tags:
+        - ETF Management
+      summary: Recupera ETF per ID
+      description: Restituisce i dettagli completi di un ETF specifico
+      operationId: getETFById
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: ID univoco dell'ETF
+          schema:
+            type: string
+            example: "world_equity"
+      responses:
+        '200':
+          description: ETF trovato
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponseETF'
+        '404':
+          description: ETF non trovato
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+
+  /v1/etfs/filter/risk/{riskLevel}:
+    get:
+      tags:
+        - ETF Management
+      summary: Filtra ETF per livello di rischio
+      description: Restituisce ETF filtrati per livello di rischio specificato
+      operationId: getETFsByRisk
+      parameters:
+        - name: riskLevel
+          in: path
+          required: true
+          description: Livello di rischio
+          schema:
+            type: string
+            enum: [LOW, MEDIUM, HIGH, VERY_HIGH]
+      responses:
+        '200':
+          description: ETF filtrati con successo
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponseETFList'
+
+  /v1/etfs/top-performing:
+    get:
+      tags:
+        - ETF Management
+      summary: ETF con migliori performance
+      description: Restituisce i top ETF ordinati per performance
+      operationId: getTopPerformingETFs
+      parameters:
+        - name: limit
+          in: query
+          description: Numero massimo di ETF da restituire
+          schema:
+            type: integer
+            default: 10
+            minimum: 1
+            maximum: 50
+      responses:
+        '200':
+          description: Top ETF recuperati con successo
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponseETFList'
+
+  /v1/etfs/low-cost:
+    get:
+      tags:
+        - ETF Management
+      summary: ETF a basso costo
+      description: Restituisce ETF con spese di gestione contenute
+      operationId: getLowCostETFs
+      parameters:
+        - name: maxExpense
+          in: query
+          description: Spesa massima accettabile (%)
+          schema:
+            type: number
+            format: double
+            default: 0.5
+            minimum: 0
+            maximum: 5
+      responses:
+        '200':
+          description: ETF low-cost recuperati con successo
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponseETFList'
+
+  # ==================== PORTFOLIO ENDPOINTS ====================
+  /v1/portfolios:
+    post:
+      tags:
+        - Portfolio Management
+      summary: Crea nuovo portfolio
+      description: Crea un nuovo portfolio con allocazione ETF personalizzata
+      operationId: createPortfolio
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PortfolioRequest'
+      responses:
+        '201':
+          description: Portfolio creato con successo
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponsePortfolio'
+        '400':
+          description: Dati non validi
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+
+  /v1/portfolios/{id}:
+    get:
+      tags:
+        - Portfolio Management
+      summary: Recupera portfolio per ID
+      description: Restituisce i dettagli completi di un portfolio
+      operationId: getPortfolioById
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: ID del portfolio
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: Portfolio trovato
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponsePortfolio'
+        '404':
+          description: Portfolio non trovato
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+
+    put:
+      tags:
+        - Portfolio Management
+      summary: Aggiorna portfolio
+      description: Modifica un portfolio esistente
+      operationId: updatePortfolio
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: ID del portfolio
+          schema:
+            type: integer
+            format: int64
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PortfolioRequest'
+      responses:
+        '200':
+          description: Portfolio aggiornato con successo
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponsePortfolio'
+        '400':
+          description: Portfolio non modificabile
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '404':
+          description: Portfolio non trovato
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+
+    delete:
+      tags:
+        - Portfolio Management
+      summary: Elimina portfolio
+      description: Rimuove un portfolio e tutte le simulazioni correlate
+      operationId: deletePortfolio
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: ID del portfolio
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: Portfolio eliminato con successo
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponseVoid'
+        '400':
+          description: Portfolio con simulazioni attive
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '404':
+          description: Portfolio non trovato
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+
+  /v1/portfolios/user/{userId}:
+    get:
+      tags:
+        - Portfolio Management
+      summary: Lista portfolio utente
+      description: Restituisce tutti i portfolio di un utente
+      operationId: getUserPortfolios
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          description: ID dell'utente
+          schema:
+            type: integer
+            format: int64
+        - name: includeTemplates
+          in: query
+          description: Include template predefiniti
+          schema:
+            type: boolean
+            default: false
+      responses:
+        '200':
+          description: Portfolio recuperati con successo
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponsePortfolioList'
+
+  /v1/portfolios/validate-allocation:
+    post:
+      tags:
+        - Portfolio Management
+      summary: Valida allocazione ETF
+      description: Verifica che l'allocazione ETF sia valida (somma 100%)
+      operationId: validateAllocation
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties:
+                type: number
+                format: double
+              example:
+                world_equity: 60
+                bonds: 20
+                emerging: 15
+                real_estate: 5
+      responses:
+        '200':
+          description: Risultato validazione
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponseValidation'
+
+  /v1/portfolios/optimize:
+    post:
+      tags:
+        - Portfolio Management
+      summary: Ottimizza portfolio
+      description: Suggerisce allocazione ottimale basata sul profilo di rischio
+      operationId: optimizePortfolio
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                risk_profile:
+                  type: string
+                  enum: [CONSERVATIVO, MODERATO, AGGRESSIVO]
+                constraints:
+                  type: object
+                  properties:
+                    min_allocation:
+                      type: number
+                      format: double
+                    max_allocation:
+                      type: number
+                      format: double
+                    excluded_etfs:
+                      type: array
+                      items:
+                        type: string
+      responses:
+        '200':
+          description: Ottimizzazione completata
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponseOptimization'
+
+  # ==================== SIMULATION ENDPOINTS ====================
+  /simulations/run:
+    post:
+      tags:
+        - Simulation Management
+      summary: Esegui simulazione
+      description: Esegue una nuova simulazione con i parametri forniti
+      operationId: runSimulation
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SimulationRequest'
+      responses:
+        '200':
+          description: Simulazione completata
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponseSimulationResult'
+        '400':
+          description: Parametri non validi
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '500':
+          description: Errore durante simulazione
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+
+  /simulations:
+    get:
+      tags:
+        - Simulation Management
+      summary: Lista simulazioni
+      description: Restituisce tutte le simulazioni salvate
+      operationId: getAllSimulations
+      parameters:
+        - name: page
+          in: query
+          description: Numero pagina
+          schema:
+            type: integer
+            default: 0
+        - name: size
+          in: query
+          description: Elementi per pagina
+          schema:
+            type: integer
+            default: 20
+      responses:
+        '200':
+          description: Simulazioni recuperate con successo
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponseSimulationList'
+
+    post:
+      tags:
+        - Simulation Management
+      summary: Salva simulazione
+      description: Salva i risultati di una simulazione
+      operationId: saveSimulation
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SimulationRequest'
+      responses:
+        '201':
+          description: Simulazione salvata con successo
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponseSimulation'
+
+  /simulations/{id}:
+    get:
+      tags:
+        - Simulation Management
+      summary: Recupera simulazione per ID
+      description: Restituisce i dettagli di una simulazione salvata
+      operationId: getSimulationById
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: ID della simulazione
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: Simulazione trovata
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponseSimulation'
+        '404':
+          description: Simulazione non trovata
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+
+    delete:
+      tags:
+        - Simulation Management
+      summary: Elimina simulazione
+      description: Rimuove una simulazione salvata
+      operationId: deleteSimulation
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: ID della simulazione
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: Simulazione eliminata con successo
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponseVoid'
+        '404':
+          description: Simulazione non trovata
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+
+  /simulations/compare:
+    post:
+      tags:
+        - Simulation Management
+      summary: Confronta simulazioni
+      description: Confronta performance di più simulazioni
+      operationId: compareSimulations
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                simulation_ids:
+                  type: array
+                  items:
+                    type: integer
+                    format: int64
+                  minItems: 2
+                  maxItems: 10
+              required:
+                - simulation_ids
+      responses:
+        '200':
+          description: Confronto completato
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponseComparison'
+
+  # ==================== BACKTEST ENDPOINTS ====================
+  /v1/backtest/run:
+    post:
+      tags:
+        - Backtesting
+      summary: Avvia backtest
+      description: Esegue backtest su dati storici con strategia selezionata
+      operationId: runBacktest
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BacktestRequest'
+      responses:
+        '200':
+          description: Backtest completato
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponseBacktestResult'
+        '400':
+          description: Parametri non validi
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+
+  /v1/backtest/compare-strategies:
+    post:
+      tags:
+        - Backtesting
+      summary: Confronta strategie
+      description: Confronta performance di diverse strategie di investimento
+      operationId: compareStrategies
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                strategies:
+                  type: array
+                  items:
+                    type: string
+                    enum: [DCA, VALUE_AVERAGING, MOMENTUM, CONTRARIAN, SMART_BETA, TACTICAL]
+                  minItems: 2
+                base_parameters:
+                  type: object
+                  properties:
+                    initialAmount:
+                      type: number
+                      format: double
+                    monthlyAmount:
+                      type: number
+                      format: double
+                    period:
+                      type: string
+                      enum: [1Y, 3Y, 5Y, 10Y]
+      responses:
+        '200':
+          description: Confronto completato
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponseStrategyComparison'
+
+  /v1/backtest/{backtestId}:
+    get:
+      tags:
+        - Backtesting
+      summary: Risultati backtest
+      description: Recupera risultati di un backtest precedente
+      operationId: getBacktestResults
+      parameters:
+        - name: backtestId
+          in: path
+          required: true
+          description: ID del backtest
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: Risultati recuperati
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponseBacktestResult'
+        '404':
+          description: Backtest non trovato
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+
+  # ==================== USER ENDPOINTS ====================
+  /users:
+    get:
+      tags:
+        - User Management
+      summary: Lista utenti
+      description: Restituisce lista utenti per selezione
+      operationId: getAllUsers
+      responses:
+        '200':
+          description: Utenti recuperati con successo
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponseUserList'
+
+    post:
+      tags:
+        - User Management
+      summary: Crea utente demo
+      description: Crea un utente per demo/test
+      operationId: createUser
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserRequest'
+      responses:
+        '201':
+          description: Utente creato con successo
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponseUser'
+        '400':
+          description: Email già esistente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+
+# ==================== COMPONENTS ====================
+components:
+  schemas:
+    # ========== Basic Response Wrappers ==========
+    ApiResponseVoid:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        data:
+          type: object
+          nullable: true
+        error:
+          type: string
+          nullable: true
+
+    ApiResponseETF:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        data:
+          $ref: '#/components/schemas/ETFResponse'
+        error:
+          type: string
+          nullable: true
+
+    ApiResponseETFList:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/ETFResponse'
+        error:
+          type: string
+          nullable: true
+
+    ApiResponsePortfolio:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        data:
+          $ref: '#/components/schemas/PortfolioResponse'
+        error:
+          type: string
+          nullable: true
+
+    ApiResponsePortfolioList:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/PortfolioResponse'
+        error:
+          type: string
+          nullable: true
+
+    ApiResponseSimulation:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        data:
+          $ref: '#/components/schemas/SimulationResponse'
+        error:
+          type: string
+          nullable: true
+
+    ApiResponseSimulationList:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/SimulationResponse'
+        error:
+          type: string
+          nullable: true
+
+    ApiResponseSimulationResult:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        data:
+          type: object
+          properties:
+            simulationData:
+              type: array
+              items:
+                $ref: '#/components/schemas/SimulationDataPoint'
+            results:
+              $ref: '#/components/schemas/SimulationResults'
+        error:
+          type: string
+          nullable: true
+
+    ApiResponseBacktestResult:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        data:
+          $ref: '#/components/schemas/BacktestResult'
+        error:
+          type: string
+          nullable: true
+
+    ApiResponseUser:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        data:
+          $ref: '#/components/schemas/UserResponse'
+        error:
+          type: string
+          nullable: true
+
+    ApiResponseUserList:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/UserResponse'
+        error:
+          type: string
+          nullable: true
+
+    ApiResponseValidation:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        data:
+          type: object
+          properties:
+            total_allocation:
+              type: number
+              format: double
+            is_valid:
+              type: boolean
+            errors:
+              type: array
+              items:
+                type: string
+            warnings:
+              type: array
+              items:
+                type: string
+        error:
+          type: string
+          nullable: true
+
+    ApiResponseOptimization:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        data:
+          type: object
+          properties:
+            suggested_allocation:
+              type: object
+              additionalProperties:
+                type: number
+                format: double
+            risk_profile:
+              type: string
+            optimization_timestamp:
+              type: string
+              format: date-time
+        error:
+          type: string
+          nullable: true
+
+    ApiResponseComparison:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        data:
+          type: object
+          properties:
+            simulations:
+              type: array
+              items:
+                $ref: '#/components/schemas/SimulationResponse'
+            performance_comparison:
+              type: object
+            risk_comparison:
+              type: object
+            strategy_analysis:
+              type: object
+            best_performer:
+              type: object
+        error:
+          type: string
+          nullable: true
+
+    ApiResponseStrategyComparison:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        data:
+          type: object
+          properties:
+            strategies:
+              type: array
+              items:
+                type: string
+            results:
+              type: object
+              additionalProperties:
+                $ref: '#/components/schemas/BacktestResults'
+            summary:
+              type: object
+            best_strategy:
+              type: string
+            risk_return_chart:
+              type: object
+        error:
+          type: string
+          nullable: true
+
+    # ========== Request Objects ==========
+    ETFResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          example: "world_equity"
+        name:
+          type: string
+          example: "FTSE Developed World UCITS ETF"
+        ticker:
+          type: string
+          example: "VWCE"
+        expense:
+          type: number
+          format: double
+          example: 0.22
+        risk:
+          type: string
+          enum: [low, medium, high, very_high]
+        sector:
+          type: string
+          example: "Global Equity"
+        aum:
+          type: string
+          example: "4.2B"
+        dividend:
+          type: string
+          example: "1.8%"
+        beta:
+          type: number
+          format: double
+          example: 0.98
+        sharpe:
+          type: number
+          format: double
+          example: 0.85
+        maxDrawdown:
+          type: number
+          format: double
+          example: -34.2
+        ytd:
+          type: number
+          format: double
+          example: 12.5
+        oneYear:
+          type: number
+          format: double
+          example: 18.3
+        threeYear:
+          type: number
+          format: double
+          example: 8.7
+        fiveYear:
+          type: number
+          format: double
+          example: 11.2
+
+    PortfolioRequest:
+      type: object
+      required:
+        - name
+        - userId
+        - initialAmount
+        - monthlyAmount
+        - investmentPeriodMonths
+        - frequency
+        - strategy
+        - rebalanceFrequency
+        - etfAllocations
+      properties:
+        name:
+          type: string
+          maxLength: 100
+          example: "Portfolio Diversificato 2025"
+        description:
+          type: string
+          maxLength: 500
+          example: "Portfolio bilanciato per investimento a lungo termine"
+        userId:
+          type: integer
+          format: int64
+          example: 1
+        initialAmount:
+          type: number
+          format: decimal
+          minimum: 0
+          example: 10000
+        monthlyAmount:
+          type: number
+          format: decimal
+          minimum: 0
+          example: 500
+        investmentPeriodMonths:
+          type: integer
+          minimum: 1
+          maximum: 600
+          example: 60
+        frequency:
+          type: string
+          enum: [WEEKLY, MONTHLY, QUARTERLY]
+          example: "MONTHLY"
+        strategy:
+          type: string
+          enum: [DCA, VALUE_AVERAGING, MOMENTUM, CONTRARIAN, SMART_BETA, TACTICAL]
+          example: "DCA"
+        rebalanceFrequency:
+          type: string
+          enum: [NEVER, MONTHLY, QUARTERLY, SEMIANNUAL, ANNUAL]
+          example: "QUARTERLY"
+        automaticRebalance:
+          type: boolean
+          default: true
+        stopLossPercentage:
+          type: number
+          format: decimal
+          minimum: 0
+          maximum: 50
+          default: 0
+          example: 15
+        takeProfitPercentage:
+          type: number
+          format: decimal
+          minimum: 0
+          maximum: 200
+          default: 0
+          example: 50
+        etfAllocations:
+          type: object
+          additionalProperties:
+            type: number
+            format: decimal
+          example:
+            world_equity: 60
+            bonds: 20
+            emerging: 15
+            real_estate: 5
+        isTemplate:
+          type: boolean
+          default: false
+        status:
+          type: string
+          enum: [DRAFT, ACTIVE, PAUSED, COMPLETED, ARCHIVED]
+          default: "DRAFT"
+
+    PortfolioResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        name:
+          type: string
+        description:
+          type: string
+        userId:
+          type: integer
+          format: int64
+        userName:
+          type: string
+        initialAmount:
+          type: number
+          format: decimal
+        monthlyAmount:
+          type: number
+          format: decimal
+        investmentPeriodMonths:
+          type: integer
+        frequency:
+          type: string
+        strategy:
+          type: string
+        rebalanceFrequency:
+          type: string
+        automaticRebalance:
+          type: boolean
+        stopLossPercentage:
+          type: number
+          format: decimal
+        takeProfitPercentage:
+          type: number
+          format: decimal
+        etfAllocations:
+          type: object
+          additionalProperties:
+            type: number
+            format: decimal
+        etfAllocationDetails:
+          type: array
+          items:
+            $ref: '#/components/schemas/ETFAllocationDetail'
+        active:
+          type: boolean
+        isTemplate:
+          type: boolean
+        status:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        lastSimulatedAt:
+          type: string
+          format: date-time
+        totalAllocationPercentage:
+          type: number
+          format: decimal
+        allocationValid:
+          type: boolean
+        estimatedTotalInvestment:
+          type: number
+          format: decimal
+        editable:
+          type: boolean
+        expectedReturn:
+          type: number
+          format: decimal
+        expectedVolatility:
+          type: number
+          format: decimal
+        expectedSharpeRatio:
+          type: number
+          format: decimal
+        riskLevel:
+          type: string
+        simulationCount:
+          type: integer
+        recentSimulations:
+          type: array
+          items:
+            $ref: '#/components/schemas/SimulationSummary'
+
+    ETFAllocationDetail:
+      type: object
+      properties:
+        etfId:
+          type: string
+        etfName:
+          type: string
+        ticker:
+          type: string
+        allocationPercentage:
+          type: number
+          format: decimal
+        sector:
+          type: string
+        riskLevel:
+          type: string
+        expenseRatio:
+          type: number
+          format: double
+        expectedReturn:
+          type: number
+          format: double
+
+    SimulationSummary:
+      type: object
+      properties:
+        simulationId:
+          type: integer
+          format: int64
+        simulationName:
+          type: string
+        status:
+          type: string
+        finalReturn:
+          type: number
+          format: double
+        createdAt:
+          type: string
+          format: date-time
+
+    SimulationRequest:
+      type: object
+      required:
+        - name
+        - initialAmount
+        - monthlyAmount
+        - investmentPeriod
+        - frequency
+        - strategy
+        - etfAllocation
+        - riskTolerance
+        - rebalanceFrequency
+        - userId
+      properties:
+        name:
+          type: string
+          example: "Simulazione PAC 2025"
+        initialAmount:
+          type: number
+          format: double
+          minimum: 100
+          example: 10000
+        monthlyAmount:
+          type: number
+          format: double
+          minimum: 50
+          example: 500
+        investmentPeriod:
+          type: integer
+          minimum: 6
+          maximum: 600
+          example: 60
+        frequency:
+          type: string
+          enum: [MONTHLY, QUARTERLY, SEMIANNUAL, ANNUAL]
+          example: "MONTHLY"
+        strategy:
+          type: string
+          enum: [DCA, VALUE_AVERAGING, MOMENTUM, CONTRARIAN, SMART_BETA, TACTICAL]
+          example: "DCA"
+        etfAllocation:
+          type: object
+          additionalProperties:
+            type: number
+            format: double
+          example:
+            world_equity: 60
+            bonds: 20
+            emerging: 15
+            real_estate: 5
+        riskTolerance:
+          type: string
+          enum: [CONSERVATIVE, MODERATE, AGGRESSIVE]
+          example: "MODERATE"
+        rebalanceFrequency:
+          type: string
+          enum: [MONTHLY, QUARTERLY, SEMIANNUAL, ANNUAL]
+          example: "QUARTERLY"
+        automaticRebalance:
+          type: boolean
+          default: true
+        stopLoss:
+          type: number
+          format: double
+          minimum: 0
+          maximum: 50
+          example: 15
+        takeProfitTarget:
+          type: number
+          format: double
+          minimum: 0
+          maximum: 100
+          example: 50
+        userId:
+          type: integer
+          format: int64
+          example: 1
+
+    SimulationResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        name:
+          type: string
+        initialAmount:
+          type: number
+          format: double
+        monthlyAmount:
+          type: number
+          format: double
+        investmentPeriod:
+          type: integer
+        frequency:
+          type: string
+        strategy:
+          type: string
+        etfAllocation:
+          type: object
+          additionalProperties:
+            type: number
+            format: double
+        riskTolerance:
+          type: string
+        rebalanceFrequency:
+          type: string
+        automaticRebalance:
+          type: boolean
+        stopLoss:
+          type: number
+          format: double
+        takeProfitTarget:
+          type: number
+          format: double
+        status:
+          type: string
+        finalValue:
+          type: number
+          format: double
+        totalInvested:
+          type: number
+          format: double
+        cumulativeReturn:
+          type: number
+          format: double
+        volatility:
+          type: number
+          format: double
+        maxDrawdown:
+          type: number
+          format: double
+        sharpeRatio:
+          type: number
+          format: double
+        winRate:
+          type: number
+          format: double
+        simulationData:
+          type: array
+          items:
+            $ref: '#/components/schemas/SimulationDataPoint'
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    SimulationDataPoint:
+      type: object
+      properties:
+        month:
+          type: integer
+        totalValue:
+          type: number
+          format: double
+        totalInvested:
+          type: number
+          format: double
+        monthlyInvestment:
+          type: number
+          format: double
+        monthlyReturn:
+          type: number
+          format: double
+        cumulativeReturn:
+          type: number
+          format: double
+        inflationAdjustedValue:
+          type: number
+          format: double
+        sharpeRatio:
+          type: number
+          format: double
+
+    SimulationResults:
+      type: object
+      properties:
+        finalValue:
+          type: number
+          format: double
+        totalInvested:
+          type: number
+          format: double
+        cumulativeReturn:
+          type: number
+          format: double
+        volatility:
+          type: number
+          format: double
+        maxDrawdown:
+          type: number
+          format: double
+        sharpeRatio:
+          type: number
+          format: double
+        winRate:
+          type: number
+          format: double
+        annualizedReturn:
+          type: number
+          format: double
+        bestMonth:
+          type: number
+          format: double
+        worstMonth:
+          type: number
+          format: double
+        consistency:
+          type: number
+          format: double
+        calmarRatio:
+          type: number
+          format: double
+
+    BacktestRequest:
+      type: object
+      required:
+        - name
+        - strategy
+        - startDate
+        - endDate
+        - initialAmount
+        - monthlyAmount
+        - etfAllocation
+        - frequency
+        - period
+        - userId
+      properties:
+        name:
+          type: string
+          example: "Backtest DCA 5 anni"
+        strategy:
+          type: string
+          enum: [DCA, VALUE_AVERAGING, MOMENTUM, CONTRARIAN, SMART_BETA, TACTICAL]
+        startDate:
+          type: string
+          format: date
+          example: "2019-01-01"
+        endDate:
+          type: string
+          format: date
+          example: "2024-01-01"
+        initialAmount:
+          type: number
+          format: double
+          minimum: 1000
+          example: 10000
+        monthlyAmount:
+          type: number
+          format: double
+          minimum: 100
+          example: 500
+        etfAllocation:
+          type: object
+          additionalProperties:
+            type: number
+            format: double
+        frequency:
+          type: string
+          enum: [WEEKLY, MONTHLY, QUARTERLY]
+          example: "MONTHLY"
+        period:
+          type: string
+          enum: [1Y, 3Y, 5Y, 10Y]
+          example: "5Y"
+        riskTolerance:
+          type: string
+          default: "MODERATE"
+        rebalanceFrequency:
+          type: string
+          default: "QUARTERLY"
+        automaticRebalance:
+          type: boolean
+          default: true
+        stopLoss:
+          type: number
+          format: double
+        takeProfitTarget:
+          type: number
+          format: double
+        includeTransactionCosts:
+          type: boolean
+          default: false
+        transactionCostPercentage:
+          type: number
+          format: double
+          default: 0.1
+        includeDividends:
+          type: boolean
+          default: true
+        benchmarkIndex:
+          type: string
+          default: "SP500"
+        userId:
+          type: integer
+          format: int64
+
+    BacktestResult:
+      type: object
+      properties:
+        backtest_id:
+          type: integer
+          format: int64
+        request:
+          $ref: '#/components/schemas/BacktestRequest'
+        results:
+          $ref: '#/components/schemas/BacktestResults'
+        benchmark_results:
+          $ref: '#/components/schemas/BacktestResults'
+        comparison:
+          type: object
+          properties:
+            excess_return:
+              type: number
+              format: double
+            information_ratio:
+              type: number
+              format: double
+            alpha:
+              type: number
+              format: double
+            beta:
+              type: number
+              format: double
+            outperformance:
+              type: boolean
+        risk_metrics:
+          type: object
+          properties:
+            value_at_risk_95:
+              type: number
+              format: double
+            expected_shortfall:
+              type: number
+              format: double
+            calmar_ratio:
+              type: number
+              format: double
+            sortino_ratio:
+              type: number
+              format: double
+            treynor_ratio:
+              type: number
+              format: double
+        performance_attribution:
+          type: object
+          additionalProperties:
+            type: number
+            format: double
+        historical_data:
+          type: array
+          items:
+            $ref: '#/components/schemas/BacktestDataPoint'
+        executed_at:
+          type: string
+          format: date-time
+
+    BacktestResults:
+      type: object
+      properties:
+        totalReturn:
+          type: number
+          format: double
+        annualizedReturn:
+          type: number
+          format: double
+        volatility:
+          type: number
+          format: double
+        sharpeRatio:
+          type: number
+          format: double
+        maxDrawdown:
+          type: number
+          format: double
+        finalValue:
+          type: number
+          format: double
+        totalInvested:
+          type: number
+          format: double
+        winRate:
+          type: number
+          format: double
+        bestMonth:
+          type: number
+          format: double
+        worstMonth:
+          type: number
+          format: double
+
+    BacktestDataPoint:
+      type: object
+      properties:
+        month:
+          type: integer
+        date:
+          type: string
+          format: date
+        portfolioValue:
+          type: number
+          format: double
+        totalInvested:
+          type: number
+          format: double
+        monthlyReturn:
+          type: number
+          format: double
+        cumulativeReturn:
+          type: number
+          format: double
+
+    UserRequest:
+      type: object
+      required:
+        - name
+        - email
+        - riskProfile
+        - experience
+      properties:
+        name:
+          type: string
+          example: "Marco Rossi"
+        email:
+          type: string
+          format: email
+          example: "marco.rossi@example.com"
+        riskProfile:
+          type: string
+          enum: [CONSERVATIVO, MODERATO, AGGRESSIVO]
+          example: "MODERATO"
+        experience:
+          type: string
+          enum: [PRINCIPIANTE, INTERMEDIO, AVANZATO]
+          example: "INTERMEDIO"
+        totalPortfolio:
+          type: number
+          format: double
+          minimum: 0
+          example: 50000
+
+    UserResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        name:
+          type: string
+        email:
+          type: string
+        riskProfile:
+          type: string
+        experience:
+          type: string
+        totalPortfolio:
+          type: number
+          format: double
+        activeSimulations:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+
+    ApiError:
+      type: object
+      properties:
+        success:
+          type: boolean
+          default: false
+        error:
+          type: string
+        message:
+          type: string
+        timestamp:
+          type: string
+          format: date-time
+        path:
+          type: string
+
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: |
+        JWT Token per autenticazione (attualmente non richiesto in modalità demo)

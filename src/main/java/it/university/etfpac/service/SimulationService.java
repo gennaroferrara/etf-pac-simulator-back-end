@@ -74,7 +74,6 @@ public class SimulationService {
         // Calcola risultati
         SimulationResults results = simulationEngine.calculateResults(simulationData);
 
-        // Prepara risposta
         Map<String, Object> response = new HashMap<>();
         response.put("simulationData", simulationData.stream()
                 .map(data -> {
@@ -90,20 +89,22 @@ public class SimulationService {
                 })
                 .collect(Collectors.toList()));
 
-        response.put("results", Map.of(
-                "finalValue", results.getFinalValue(),
-                "totalInvested", results.getTotalInvested(),
-                "cumulativeReturn", results.getCumulativeReturn(),
-                "volatility", results.getVolatility(),
-                "maxDrawdown", results.getMaxDrawdown(),
-                "sharpeRatio", results.getSharpeRatio(),
-                "winRate", results.getWinRate(),
-                "annualizedReturn", calculateAnnualizedReturn(simulationData),
-                "bestMonth", calculateBestMonth(simulationData),
-                "worstMonth", calculateWorstMonth(simulationData),
-                "consistency", calculateConsistency(simulationData),
-                "calmarRatio", calculateCalmarRatio(results)
-        ));
+        // Crea la mappa dei risultati usando HashMap invece di Map.of()
+        Map<String, Object> resultsMap = new HashMap<>();
+        resultsMap.put("finalValue", results.getFinalValue());
+        resultsMap.put("totalInvested", results.getTotalInvested());
+        resultsMap.put("cumulativeReturn", results.getCumulativeReturn());
+        resultsMap.put("volatility", results.getVolatility());
+        resultsMap.put("maxDrawdown", results.getMaxDrawdown());
+        resultsMap.put("sharpeRatio", results.getSharpeRatio());
+        resultsMap.put("winRate", results.getWinRate());
+        resultsMap.put("annualizedReturn", calculateAnnualizedReturn(simulationData));
+        resultsMap.put("bestMonth", calculateBestMonth(simulationData));
+        resultsMap.put("worstMonth", calculateWorstMonth(simulationData));
+        resultsMap.put("consistency", calculateConsistency(simulationData));
+        resultsMap.put("calmarRatio", calculateCalmarRatio(results));
+
+        response.put("results", resultsMap);
 
         return response;
     }
