@@ -22,7 +22,7 @@ WORKDIR /app
 RUN apk add --no-cache curl
 
 # Copia JAR dall'immagine builder
-COPY --from=builder /app/target/*.jar app.jar
+COPY --from=builder /app/target/etf-pac-simulator-backend-1.0.0.jar app.jar
 
 # Crea directory per logs
 RUN mkdir -p /app/logs && \

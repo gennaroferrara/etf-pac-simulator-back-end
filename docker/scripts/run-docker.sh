@@ -1,4 +1,4 @@
 #!/bin/bash
 
-echo "🚀 Avvio ambiente Docker (PostgreSQL, Redis, App, Nginx)..."
+echo "🚀 Avvio ambiente Docker (PostgreSQL, App)..."
 docker-compose up
