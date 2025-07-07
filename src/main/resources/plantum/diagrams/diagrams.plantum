@@ -1,0 +1,1144 @@
+# Diagrammi di Sequenza PlantUML - ETF PAC Simulator
+
+## 1. Avvio Applicazione e Caricamento Dashboard
+
+```plantuml
+@startuml
+!theme blueprint
+title Sequenza: Avvio Applicazione e Caricamento Dashboard
+
+actor Utente as U
+participant "Browser" as B
+participant "React App" as R
+participant "ETFPACSimulator" as E
+participant "Dashboard" as D
+participant "API Service" as API
+database "Backend" as DB
+
+U -> B: Accede all'applicazione
+B -> R: Carica index.html
+R -> E: Render componente principale
+activate E
+
+E -> E: useState per stato iniziale
+E -> E: useEffect per inizializzazione
+E -> API: loadSavedSimulations()
+activate API
+API -> DB: GET /api/simulations
+DB --> API: Lista simulazioni salvate
+API --> E: Dati simulazioni
+deactivate API
+
+E -> D: Render Dashboard con dati
+activate D
+D -> D: Mostra azioni rapide
+D -> D: Mostra ETF disponibili
+D -> D: Mostra simulazioni recenti
+D --> E: Componente renderizzato
+deactivate D
+
+E --> B: UI Dashboard completa
+B --> U: Visualizza Dashboard
+deactivate E
+
+@enduml
+```
+
+## 2. Configurazione e Esecuzione Simulazione
+
+```plantuml
+@startuml
+!theme blueprint
+title Sequenza: Configurazione ed Esecuzione Simulazione
+
+actor Utente as U
+participant "Navigation" as N
+participant "Configuration" as C
+participant "ETFPACSimulator" as E
+participant "useSimulation Hook" as H
+participant "API Service" as API
+participant "Results" as R
+database "Backend" as DB
+
+U -> N: Clicca su "Simulazione"
+N -> E: setActiveTab('simulation')
+E -> C: Render Configuration
+
+activate C
+C --> U: Mostra form configurazione
+
+U -> C: Inserisce nome portfolio
+C -> E: handleConfigChange('name', value)
+
+U -> C: Imposta importo iniziale
+C -> E: handleConfigChange('initialAmount', value)
+
+U -> C: Configura allocazione ETF
+C -> E: handleAllocationChange(etfId, percentage)
+C -> C: Verifica totale = 100%
+
+U -> C: Seleziona strategia
+C -> E: handleConfigChange('strategy', strategyId)
+
+U -> C: Clicca "Avvia Simulazione"
+C -> E: onRunSimulation()
+deactivate C
+
+activate E
+E -> H: runSimulation(config)
+activate H
+H -> H: setIsSimulating(true)
+H -> API: POST /api/simulations/run
+activate API
+API -> DB: Invia configurazione
+DB -> DB: Esegue calcoli simulazione
+DB --> API: Risultati simulazione
+API --> H: {simulationData, results}
+deactivate API
+
+H -> H: setSimulationData(data)
+H -> H: setResults(results)
+H -> H: setIsSimulating(false)
+H --> E: {success: true, data, results}
+deactivate H
+
+E -> E: setActiveTab('results')
+E -> R: Render Results con dati
+activate R
+R -> R: Mostra KPI Dashboard
+R -> R: Renderizza grafici
+R -> R: Calcola metriche
+R --> E: UI risultati completa
+deactivate R
+
+E --> U: Visualizza risultati simulazione
+deactivate E
+
+@enduml
+```
+
+## 3. Confronto Strategie
+
+```plantuml
+@startuml
+!theme blueprint
+title Sequenza: Confronto Strategie di Investimento
+
+actor Utente as U
+participant "Navigation" as N
+participant "Comparison" as C
+participant "ETFPACSimulator" as E
+participant "API Service" as API
+participant "Charts" as CH
+database "Backend" as DB
+
+U -> N: Clicca su "Confronto"
+N -> E: setActiveTab('comparison')
+E -> C: Render Comparison
+activate C
+
+C --> U: Mostra griglia strategie
+
+loop Selezione Strategie
+    U -> C: Toggle strategia
+    C -> C: handleStrategyToggle(strategyId)
+    C -> C: Aggiorna selectedStrategies[]
+    C -> C: Verifica max 4 strategie
+end
+
+U -> C: Configura parametri base
+C -> C: setBaseConfig(parameters)
+
+U -> C: Clicca "Avvia Confronto"
+C -> C: runComparisonSimulation()
+activate C
+
+C -> API: compareStrategies(strategies, config)
+activate API
+API -> DB: POST /api/analysis/compare-strategies
+DB -> DB: Simula ogni strategia
+DB -> DB: Calcola metriche comparative
+DB --> API: Risultati confronto
+API --> C: comparisonResults
+deactivate API
+
+C -> C: setComparisonResults(results)
+C -> CH: Prepara dati per grafici
+activate CH
+CH -> CH: Formatta dati performance
+CH -> CH: Calcola ranking metriche
+CH --> C: Dati grafici formattati
+deactivate CH
+
+C -> C: Render tabella confronto
+C -> C: Render grafico performance
+C -> C: Render radar chart
+C -> C: Genera raccomandazioni
+
+C --> U: Visualizza confronto completo
+deactivate C
+deactivate C
+
+@enduml
+```
+
+## 4. Backtesting Storico
+
+```plantuml
+@startuml
+!theme blueprint
+title Sequenza: Backtesting Storico
+
+actor Utente as U
+participant "Navigation" as N
+participant "Backtest" as B
+participant "ETFPACSimulator" as E
+participant "useSimulation Hook" as H
+participant "API Service" as API
+database "Backend" as DB
+participant "Results Processor" as RP
+
+U -> N: Clicca su "Backtesting"
+N -> E: setActiveTab('backtest')
+E -> B: Render Backtest
+activate B
+
+B --> U: Mostra configurazione backtest
+
+U -> B: Seleziona strategia
+B -> B: setBacktestConfig({strategy})
+
+U -> B: Seleziona periodo storico
+B -> B: setBacktestConfig({period})
+
+U -> B: Imposta date inizio/fine
+B -> B: setBacktestConfig({startDate, endDate})
+
+U -> B: Clicca "Avvia Backtesting"
+B -> B: runHistoricalBacktest()
+
+B -> H: runBacktest(config, period)
+activate H
+H -> API: POST /api/backtest/run
+activate API
+API -> DB: Invia parametri backtest
+DB -> DB: Recupera dati storici
+DB -> DB: Applica strategia su dati
+DB -> DB: Calcola performance annuale
+DB --> API: Risultati backtest
+API --> H: historicalData
+deactivate API
+
+H -> H: setHistoricalData(data)
+H --> B: {success: true, data}
+deactivate H
+
+B -> RP: generateMockBacktestData()
+activate RP
+RP -> RP: Calcola rendimenti per periodo
+RP -> RP: Calcola volatilità storica
+RP -> RP: Identifica drawdown massimi
+RP -> RP: Calcola Sharpe Ratio
+RP --> B: backtestResults
+deactivate RP
+
+B -> B: setBacktestResults(results)
+B -> B: Render KPI cards
+B -> B: Render performance annuale
+B -> B: Render statistiche
+B -> B: Genera insights storici
+
+B --> U: Visualizza risultati backtest
+deactivate B
+
+@enduml
+```
+
+## 5. Salvataggio Simulazione
+
+```plantuml
+@startuml
+!theme blueprint
+title Sequenza: Salvataggio Simulazione
+
+actor Utente as U
+participant "Results" as R
+participant "ETFPACSimulator" as E
+participant "API Service" as API
+database "Backend" as DB
+participant "Dashboard" as D
+
+U -> R: Clicca "Salva Simulazione"
+activate R
+R -> E: onSaveSimulation()
+deactivate R
+
+activate E
+E -> E: handleSaveSimulation()
+E -> E: Prepara oggetto simulazione
+note right
+  simulation = {
+    name: config.name,
+    config: {...config},
+    results: {...results},
+    simulationData: [...data],
+    createdAt: new Date()
+  }
+end note
+
+E -> API: POST /api/simulations
+activate API
+API -> DB: Salva simulazione
+DB -> DB: Genera ID univoco
+DB -> DB: Persiste dati
+DB --> API: Simulazione salvata con ID
+API --> E: saved simulation object
+deactivate API
+
+E -> E: setSavedSimulations([...prev, saved])
+E -> D: Aggiorna lista simulazioni
+activate D
+D -> D: Refresh simulazioni recenti
+D --> E: UI aggiornata
+deactivate D
+
+E --> U: Conferma salvataggio
+deactivate E
+
+@enduml
+```
+
+## 6. Gestione Stati e Navigazione
+
+```plantuml
+@startuml
+!theme blueprint
+title Sequenza: Gestione Stati e Navigazione Tab
+
+actor Utente as U
+participant "Navigation" as N
+participant "ETFPACSimulator" as E
+participant "Active Component" as AC
+participant "State Management" as SM
+
+U -> N: Clicca su tab
+activate N
+N -> N: Verifica se tab è abilitato
+alt Tab Results senza risultati
+    N --> U: Tab disabilitato
+else Tab abilitato
+    N -> E: setActiveTab(tabId)
+    deactivate N
+
+    activate E
+    E -> SM: Aggiorna stato activeTab
+    activate SM
+    SM -> SM: setState(tabId)
+    SM --> E: Stato aggiornato
+    deactivate SM
+
+    E -> E: renderActiveTab()
+
+    alt Dashboard
+        E -> AC: <Dashboard />
+    else Simulation
+        E -> AC: <Configuration />
+    else Results
+        E -> AC: <Results />
+    else Comparison
+        E -> AC: <Comparison />
+    else Backtest
+        E -> AC: <Backtest />
+    end
+
+    activate AC
+    AC -> AC: componentDidMount/useEffect
+    AC -> AC: Carica dati specifici
+    AC --> E: Componente renderizzato
+    deactivate AC
+
+    E --> U: Nuova vista attiva
+    deactivate E
+end
+
+@enduml
+```
+
+## 7. Calcolo Metriche Finanziarie
+
+```plantuml
+@startuml
+!theme blueprint
+title Sequenza: Calcolo Metriche Finanziarie
+
+participant "Results" as R
+participant "calculations.js" as C
+participant "formatters.js" as F
+participant "Charts" as CH
+
+activate R
+R -> C: calculateCAGR(initial, final, years)
+activate C
+C -> C: Math.pow(final/initial, 1/years) - 1
+C --> R: CAGR value
+deactivate C
+
+R -> C: calculateVolatility(returns)
+activate C
+C -> C: Calcola media rendimenti
+C -> C: Calcola varianza
+C -> C: Math.sqrt(variance)
+C --> R: volatility
+deactivate C
+
+R -> C: calculateSharpeRatio(returns, riskFree)
+activate C
+C -> C: avgReturn - riskFree
+C -> C: Dividi per volatilità
+C --> R: sharpeRatio
+deactivate C
+
+R -> C: calculateMaxDrawdown(values)
+activate C
+loop Per ogni valore
+    C -> C: Trova nuovo peak
+    C -> C: Calcola drawdown da peak
+    C -> C: Aggiorna max drawdown
+end
+C --> R: maxDrawdown %
+deactivate C
+
+R -> F: formatCurrency(value)
+activate F
+F -> F: Intl.NumberFormat('it-IT')
+F --> R: "€10.000"
+deactivate F
+
+R -> F: formatPercentage(value)
+activate F
+F -> F: Aggiungi segno se positivo
+F -> F: Formatta con decimali
+F --> R: "+12.50%"
+deactivate F
+
+R -> CH: Prepara dati per grafici
+activate CH
+CH -> F: formatChartData(data)
+CH -> CH: Configura assi
+CH -> CH: Imposta colori
+CH --> R: Dati grafici formattati
+deactivate CH
+
+deactivate R
+
+@enduml
+```
+
+## 8. Gestione Errori e Loading States
+
+```plantuml
+@startuml
+!theme blueprint
+title Sequenza: Gestione Errori e Stati di Caricamento
+
+actor Utente as U
+participant "Component" as C
+participant "useSimulation" as H
+participant "API Service" as API
+participant "Error Handler" as EH
+participant "UI Feedback" as UI
+
+U -> C: Azione utente
+activate C
+C -> C: setIsLoading(true)
+C -> UI: Mostra spinner
+activate UI
+
+C -> H: runSimulation(config)
+activate H
+
+H -> API: POST request
+activate API
+
+alt Successo
+    API -> API: Elabora richiesta
+    API --> H: Response data
+    H -> H: setResults(data)
+    H --> C: {success: true, data}
+    C -> C: setIsLoading(false)
+    C -> UI: Nascondi spinner
+    UI --> U: Mostra risultati
+
+else Errore Network
+    API --> H: Network Error
+    deactivate API
+    H -> EH: handleError(error)
+    activate EH
+    EH -> EH: Log errore
+    EH -> EH: Prepara messaggio utente
+    EH --> H: Error object
+    deactivate EH
+    H --> C: {success: false, error}
+    C -> C: setIsLoading(false)
+    C -> UI: Mostra errore
+    UI -> UI: Alert error message
+    UI --> U: "Errore di connessione"
+
+else Errore Validazione
+    API --> H: Validation Error 400
+    H -> EH: handleError(error)
+    activate EH
+    EH -> EH: Parse error details
+    EH --> H: Validation errors
+    deactivate EH
+    H --> C: {success: false, errors}
+    C -> C: setIsLoading(false)
+    C -> UI: Evidenzia campi errati
+    UI --> U: Mostra errori validazione
+
+else Timeout
+    API -x H: Timeout
+    H -> H: Timeout handler
+    H --> C: {success: false, error: 'timeout'}
+    C -> C: setIsLoading(false)
+    C -> UI: Mostra timeout message
+    UI --> U: "Richiesta scaduta, riprova"
+end
+
+deactivate UI
+deactivate H
+deactivate C
+
+@enduml
+```
+
+## 9. Interazione con Grafici Real-time
+
+```plantuml
+@startuml
+!theme blueprint
+title Sequenza: Interazione con Grafici Real-time
+
+actor Utente as U
+participant "Results" as R
+participant "LineChart" as LC
+participant "Tooltip" as T
+participant "Legend" as L
+participant "Data Processor" as DP
+
+U -> LC: Hover su punto dati
+activate LC
+LC -> LC: Identifica coordinate mouse
+LC -> LC: Trova punto dati più vicino
+LC -> T: Mostra tooltip(dataPoint)
+activate T
+T -> DP: formatTooltip(value, label)
+activate DP
+DP -> DP: Formatta valore
+DP -> DP: Formatta etichetta
+DP --> T: Testo formattato
+deactivate DP
+T --> U: Visualizza dettagli punto
+deactivate T
+
+U -> L: Clicca su legenda
+activate L
+L -> L: Toggle serie visibility
+L -> LC: updateVisibleSeries(series)
+LC -> LC: Ricalcola scale
+LC -> LC: Re-render grafico
+LC --> U: Grafico aggiornato
+deactivate L
+
+U -> LC: Zoom/Pan su grafico
+LC -> LC: Calcola nuovi bounds
+LC -> LC: Aggiorna assi
+LC -> DP: getRangeData(start, end)
+activate DP
+DP -> DP: Filtra dati per range
+DP --> LC: Dati filtrati
+deactivate DP
+LC -> LC: Re-render con zoom
+LC --> U: Vista zoomata
+
+deactivate LC
+
+@enduml
+```
+
+## 10. Export e Download Report
+
+```plantuml
+@startuml
+!theme blueprint
+title Sequenza: Export e Download Report
+
+actor Utente as U
+participant "Backtest" as B
+participant "Export Service" as ES
+participant "PDF Generator" as PDF
+participant "API Service" as API
+participant "Browser" as BR
+
+U -> B: Clicca "Export Report"
+activate B
+B -> ES: prepareExportData()
+activate ES
+
+ES -> ES: Raccogli dati backtest
+ES -> ES: Raccogli grafici come immagini
+ES -> ES: Prepara tabelle dati
+ES -> ES: Genera summary
+
+ES -> PDF: generatePDF(exportData)
+activate PDF
+PDF -> PDF: Crea documento
+PDF -> PDF: Aggiungi header/footer
+PDF -> PDF: Inserisci grafici
+PDF -> PDF: Formatta tabelle
+PDF -> PDF: Aggiungi insights
+PDF --> ES: PDF blob
+deactivate PDF
+
+ES -> API: POST /api/export/report
+activate API
+API -> API: Salva report temporaneo
+API --> ES: Download URL
+deactivate API
+
+ES -> BR: Trigger download
+activate BR
+BR -> BR: window.open(downloadURL)
+BR --> U: Download file PDF
+deactivate BR
+
+ES --> B: Export completato
+deactivate ES
+B --> U: Notifica successo
+deactivate B
+
+@enduml
+```
+
+## Note Implementative
+
+### Convenzioni utilizzate:
+- **Actor**: Rappresenta l'utente finale
+- **Participant**: Componenti React, servizi, hook
+- **Database**: Backend API e storage
+- **Activate/Deactivate**: Indica il ciclo di vita dei componenti
+- **Alt/Else**: Gestione casi alternativi e errori
+- **Loop**: Operazioni ripetitive
+- **Note**: Dettagli implementativi importanti
+
+### Best Practices seguite:
+1. **Separazione delle responsabilità**: Ogni componente ha un ruolo specifico
+2. **Gestione stati**: Utilizzo di hook e state management centralizzato
+3. **Error handling**: Gestione completa di tutti i casi di errore
+4. **Loading states**: Feedback visivo durante operazioni asincrone
+5. **Validazione**: Controlli input lato client e server
+
+### Flussi asincroni:
+- Tutte le chiamate API sono gestite in modo asincrono
+- Stati di loading per migliorare UX
+- Gestione timeout e retry per robustezza
+- Caching dove appropriato per performance
+
+
+# Diagrammi dei Casi d'Uso PlantUML - ETF PAC Simulator
+
+## 1. Diagramma dei Casi d'Uso Generale
+
+```plantuml
+@startuml
+!theme blueprint
+title Diagramma dei Casi d'Uso - ETF PAC Simulator
+
+left to right direction
+skinparam packageStyle rectangle
+skinparam actorStyle awesome
+
+actor "Investitore\nRetail" as Utente
+actor "Sistema\nBackend" as Backend
+actor "API\nMercati" as Market
+
+rectangle "ETF PAC Simulator" {
+  usecase "Visualizzare\nDashboard" as UC1
+  usecase "Configurare\nPortfolio" as UC2
+  usecase "Eseguire\nSimulazione" as UC3
+  usecase "Confrontare\nStrategie" as UC4
+  usecase "Eseguire\nBacktesting" as UC5
+  usecase "Visualizzare\nRisultati" as UC6
+  usecase "Salvare\nSimulazione" as UC7
+  usecase "Esportare\nReport" as UC8
+  usecase "Gestire\nAllocazioni ETF" as UC9
+  usecase "Selezionare\nStrategia" as UC10
+  usecase "Analizzare\nMetriche" as UC11
+  usecase "Validare\nConfigurazione" as UC12
+  usecase "Calcolare\nPerformance" as UC13
+  usecase "Recuperare\nDati Storici" as UC14
+  usecase "Ottimizzare\nPortfolio" as UC15
+}
+
+' Relazioni principali
+Utente --> UC1
+Utente --> UC2
+Utente --> UC3
+Utente --> UC4
+Utente --> UC5
+Utente --> UC6
+Utente --> UC7
+Utente --> UC8
+
+' Include relationships
+UC2 ..> UC9 : <<include>>
+UC2 ..> UC10 : <<include>>
+UC3 ..> UC12 : <<include>>
+UC3 ..> UC13 : <<include>>
+UC4 ..> UC3 : <<include>>
+UC5 ..> UC14 : <<include>>
+UC6 ..> UC11 : <<include>>
+
+' Extend relationships
+UC2 <.. UC15 : <<extend>>
+UC6 <.. UC7 : <<extend>>
+UC6 <.. UC8 : <<extend>>
+
+' System actors
+UC13 --> Backend
+UC14 --> Market
+Backend --> UC11
+
+@enduml
+```
+
+## 2. Caso d'Uso: Configurazione Portfolio
+
+```plantuml
+@startuml
+!theme blueprint
+title Caso d'Uso Dettagliato: Configurazione Portfolio
+
+left to right direction
+skinparam actorStyle awesome
+
+actor "Investitore" as User
+actor "Sistema" as System
+
+rectangle "Configurazione Portfolio" {
+  usecase "Inserire Nome\nPortfolio" as UC_Name
+  usecase "Impostare\nCapitale Iniziale" as UC_Capital
+  usecase "Definire\nContributo Mensile" as UC_Monthly
+  usecase "Selezionare\nDurata Investimento" as UC_Duration
+  usecase "Allocare ETF" as UC_ETF
+  usecase "Scegliere\nStrategia" as UC_Strategy
+  usecase "Validare\nAllocazione 100%" as UC_Validate
+  usecase "Salvare\nConfigurazione" as UC_Save
+
+  usecase "Visualizzare\nDettagli ETF" as UC_ETFDetails
+  usecase "Calcolare\nRischio Portfolio" as UC_Risk
+  usecase "Suggerire\nAllocazione" as UC_Suggest
+  usecase "Importare\nTemplate" as UC_Template
+}
+
+User --> UC_Name
+User --> UC_Capital
+User --> UC_Monthly
+User --> UC_Duration
+User --> UC_ETF
+User --> UC_Strategy
+
+UC_ETF ..> UC_Validate : <<include>>
+UC_ETF ..> UC_ETFDetails : <<include>>
+UC_ETF <.. UC_Suggest : <<extend>>
+UC_Name <.. UC_Template : <<extend>>
+
+UC_Validate --> System
+UC_Risk --> System
+UC_Save --> System
+
+note right of UC_Validate
+  Il sistema verifica che
+  la somma delle allocazioni
+  sia esattamente 100%
+end note
+
+note left of UC_Strategy
+  Strategie disponibili:
+  - Dollar Cost Averaging
+  - Value Averaging
+  - Momentum
+  - Contrarian
+  - Smart Beta
+  - Tactical
+end note
+
+@enduml
+```
+
+## 3. Caso d'Uso: Simulazione e Analisi
+
+```plantuml
+@startuml
+!theme blueprint
+title Caso d'Uso Dettagliato: Simulazione e Analisi
+
+skinparam actorStyle awesome
+
+actor "Investitore" as User
+actor "Backend API" as API
+actor "Calculation Engine" as Engine
+
+rectangle "Simulazione Investimento" {
+  usecase "Avviare\nSimulazione" as UC_Start
+  usecase "Processare\nConfigurazione" as UC_Process
+  usecase "Generare\nTraiettorie" as UC_Generate
+  usecase "Calcolare\nRendimenti" as UC_Returns
+  usecase "Calcolare\nVolatilità" as UC_Volatility
+  usecase "Calcolare\nSharpe Ratio" as UC_Sharpe
+  usecase "Calcolare\nDrawdown" as UC_Drawdown
+  usecase "Analizzare\nRischio" as UC_Risk
+  usecase "Visualizzare\nGrafici" as UC_Charts
+  usecase "Mostrare KPI" as UC_KPI
+  usecase "Generare\nInsights" as UC_Insights
+  usecase "Confrontare\nBenchmark" as UC_Benchmark
+}
+
+User --> UC_Start
+UC_Start ..> UC_Process : <<include>>
+UC_Process --> API
+API --> Engine
+
+UC_Process ..> UC_Generate : <<include>>
+UC_Generate ..> UC_Returns : <<include>>
+UC_Generate ..> UC_Volatility : <<include>>
+UC_Returns ..> UC_Sharpe : <<include>>
+UC_Generate ..> UC_Drawdown : <<include>>
+
+UC_Returns --> UC_Charts
+UC_Volatility --> UC_Charts
+UC_Sharpe --> UC_KPI
+UC_Drawdown --> UC_KPI
+
+UC_Charts --> User
+UC_KPI --> User
+
+UC_KPI <.. UC_Insights : <<extend>>
+UC_Charts <.. UC_Benchmark : <<extend>>
+UC_Generate ..> UC_Risk : <<include>>
+
+@enduml
+```
+
+## 4. Caso d'Uso: Confronto Strategie
+
+```plantuml
+@startuml
+!theme blueprint
+title Caso d'Uso Dettagliato: Confronto Strategie
+
+left to right direction
+skinparam actorStyle awesome
+
+actor "Investitore" as User
+actor "Sistema Analisi" as Analysis
+
+rectangle "Confronto Strategie" {
+  usecase "Selezionare\nStrategie (max 4)" as UC_Select
+  usecase "Impostare\nParametri Base" as UC_Params
+  usecase "Eseguire\nSimulazioni Multiple" as UC_MultiSim
+  usecase "Confrontare\nPerformance" as UC_Compare
+  usecase "Visualizzare\nTabella Comparativa" as UC_Table
+  usecase "Mostrare\nGrafico Temporale" as UC_Timeline
+  usecase "Creare\nRadar Chart" as UC_Radar
+  usecase "Calcolare\nRanking" as UC_Rank
+  usecase "Generare\nRaccomandazioni" as UC_Recommend
+  usecase "Identificare\nStrategia Ottimale" as UC_Optimal
+  usecase "Analizzare\nTrade-offs" as UC_Tradeoff
+  usecase "Esportare\nConfronto" as UC_Export
+}
+
+User --> UC_Select
+User --> UC_Params
+User --> UC_Compare
+
+UC_Compare ..> UC_MultiSim : <<include>>
+UC_MultiSim --> Analysis
+UC_Compare ..> UC_Table : <<include>>
+UC_Compare ..> UC_Timeline : <<include>>
+UC_Compare ..> UC_Radar : <<include>>
+UC_Compare ..> UC_Rank : <<include>>
+
+UC_Rank ..> UC_Recommend : <<include>>
+UC_Recommend <.. UC_Optimal : <<extend>>
+UC_Table <.. UC_Tradeoff : <<extend>>
+UC_Compare <.. UC_Export : <<extend>>
+
+note right of UC_Select
+  Limite di 4 strategie
+  per mantenere leggibilità
+  dei grafici comparativi
+end note
+
+@enduml
+```
+
+## 5. Caso d'Uso: Backtesting Storico
+
+```plantuml
+@startuml
+!theme blueprint
+title Caso d'Uso Dettagliato: Backtesting Storico
+
+skinparam actorStyle awesome
+
+actor "Investitore" as User
+actor "Market Data API" as MarketAPI
+actor "Historical DB" as HistDB
+
+rectangle "Backtesting" {
+  usecase "Configurare\nBacktest" as UC_Config
+  usecase "Selezionare\nPeriodo Storico" as UC_Period
+  usecase "Scegliere\nStrategia" as UC_Strategy
+  usecase "Recuperare\nDati Storici" as UC_Historical
+  usecase "Applicare\nStrategia" as UC_Apply
+  usecase "Calcolare\nPerformance Annuale" as UC_Annual
+  usecase "Identificare\nAnni Migliori/Peggiori" as UC_BestWorst
+  usecase "Calcolare\nStatistiche Storiche" as UC_Stats
+  usecase "Generare\nInsights Storici" as UC_Insights
+  usecase "Confrontare\ncon Benchmark" as UC_Benchmark
+  usecase "Stress Test\nScenari Estremi" as UC_Stress
+  usecase "Visualizzare\nRisultati" as UC_Display
+}
+
+User --> UC_Config
+UC_Config ..> UC_Period : <<include>>
+UC_Config ..> UC_Strategy : <<include>>
+
+User --> UC_Apply
+UC_Apply ..> UC_Historical : <<include>>
+UC_Historical --> MarketAPI
+UC_Historical --> HistDB
+
+UC_Apply ..> UC_Annual : <<include>>
+UC_Annual ..> UC_BestWorst : <<include>>
+UC_Apply ..> UC_Stats : <<include>>
+UC_Stats ..> UC_Insights : <<include>>
+
+UC_Display ..> UC_Annual : <<include>>
+UC_Display ..> UC_Stats : <<include>>
+UC_Display ..> UC_Insights : <<include>>
+
+UC_Annual <.. UC_Benchmark : <<extend>>
+UC_Apply <.. UC_Stress : <<extend>>
+
+User --> UC_Display
+
+@enduml
+```
+
+## 6. Caso d'Uso: Gestione Risultati
+
+```plantuml
+@startuml
+!theme blueprint
+title Caso d'Uso Dettagliato: Gestione Risultati
+
+left to right direction
+skinparam actorStyle awesome
+
+actor "Investitore" as User
+actor "Storage System" as Storage
+actor "Export Service" as Export
+
+rectangle "Gestione Risultati" {
+  usecase "Visualizzare\nKPI Dashboard" as UC_KPI
+  usecase "Analizzare\nGrafici Performance" as UC_Charts
+  usecase "Esaminare\nMetriche Dettagliate" as UC_Metrics
+  usecase "Salvare\nSimulazione" as UC_Save
+  usecase "Caricare\nSimulazione Salvata" as UC_Load
+  usecase "Esportare\nPDF Report" as UC_PDF
+  usecase "Esportare\nExcel Data" as UC_Excel
+  usecase "Condividere\nRisultati" as UC_Share
+  usecase "Confrontare\ncon Storico" as UC_Compare
+  usecase "Pianificare\nInvestimento" as UC_Plan
+  usecase "Impostare\nAlert" as UC_Alert
+  usecase "Tracciare\nProgressi" as UC_Track
+}
+
+User --> UC_KPI
+User --> UC_Charts
+User --> UC_Metrics
+User --> UC_Save
+User --> UC_Load
+
+UC_Save --> Storage
+UC_Load --> Storage
+
+UC_KPI <.. UC_PDF : <<extend>>
+UC_Charts <.. UC_Excel : <<extend>>
+UC_PDF --> Export
+UC_Excel --> Export
+
+UC_Metrics <.. UC_Compare : <<extend>>
+UC_Save <.. UC_Plan : <<extend>>
+UC_Plan <.. UC_Alert : <<extend>>
+UC_Load <.. UC_Track : <<extend>>
+UC_PDF <.. UC_Share : <<extend>>
+
+note bottom of UC_Plan
+  Generazione piano di
+  investimento dettagliato
+  basato sui risultati
+end note
+
+@enduml
+```
+
+## 7. Matrice CRUD per Entità Principali
+
+```plantuml
+@startuml
+!theme blueprint
+title Matrice CRUD - ETF PAC Simulator
+
+skinparam actorStyle awesome
+
+actor "Investitore" as User
+actor "Sistema" as System
+
+rectangle "Operazioni CRUD" {
+  package "Portfolio" {
+    usecase "Create\nPortfolio" as C_Portfolio
+    usecase "Read\nPortfolio" as R_Portfolio
+    usecase "Update\nPortfolio" as U_Portfolio
+    usecase "Delete\nPortfolio" as D_Portfolio
+  }
+
+  package "Simulazione" {
+    usecase "Create\nSimulazione" as C_Sim
+    usecase "Read\nSimulazione" as R_Sim
+    usecase "Update\nParametri" as U_Sim
+    usecase "Delete\nSimulazione" as D_Sim
+  }
+
+  package "Strategia" {
+    usecase "Create\nStrategia Custom" as C_Strategy
+    usecase "Read\nStrategie" as R_Strategy
+    usecase "Update\nParametri Strategia" as U_Strategy
+    usecase "Delete\nStrategia Custom" as D_Strategy
+  }
+
+  package "Report" {
+    usecase "Generate\nReport" as C_Report
+    usecase "View\nReport" as R_Report
+    usecase "Export\nReport" as U_Report
+    usecase "Delete\nReport" as D_Report
+  }
+}
+
+User --> C_Portfolio
+User --> R_Portfolio
+User --> U_Portfolio
+User --> D_Portfolio
+
+User --> C_Sim
+User --> R_Sim
+User --> U_Sim
+User --> D_Sim
+
+User --> R_Strategy
+User <.. C_Strategy : <<optional>>
+User <.. U_Strategy : <<optional>>
+User <.. D_Strategy : <<optional>>
+
+User --> C_Report
+User --> R_Report
+User --> U_Report
+User --> D_Report
+
+System --> C_Sim
+System --> C_Report
+
+@enduml
+```
+
+## 8. Caso d'Uso: Interazioni Avanzate
+
+```plantuml
+@startuml
+!theme blueprint
+title Caso d'Uso: Funzionalità Avanzate
+
+skinparam actorStyle awesome
+
+actor "Power User" as PowerUser
+actor "Beginner" as Beginner
+actor "AI Assistant" as AI
+
+rectangle "Funzionalità Avanzate" {
+  usecase "Ottimizzazione\nAutomatica Portfolio" as UC_AutoOpt
+  usecase "Machine Learning\nPredizioni" as UC_ML
+  usecase "Analisi\nMonte Carlo" as UC_MonteCarlo
+  usecase "Stress Testing\nMulti-Scenario" as UC_StressTest
+  usecase "Rebalancing\nAutomatico" as UC_Rebalance
+  usecase "Tax\nOptimization" as UC_Tax
+  usecase "Social\nComparison" as UC_Social
+  usecase "Tutorial\nInterattivo" as UC_Tutorial
+  usecase "Suggerimenti\nPersonalizzati" as UC_Suggest
+  usecase "Risk\nProfiling" as UC_RiskProfile
+}
+
+PowerUser --> UC_AutoOpt
+PowerUser --> UC_ML
+PowerUser --> UC_MonteCarlo
+PowerUser --> UC_StressTest
+PowerUser --> UC_Rebalance
+PowerUser --> UC_Tax
+
+Beginner --> UC_Tutorial
+Beginner --> UC_Suggest
+Beginner --> UC_RiskProfile
+
+UC_AutoOpt --> AI
+UC_ML --> AI
+UC_Suggest --> AI
+
+UC_AutoOpt <.. UC_Rebalance : <<extend>>
+UC_RiskProfile ..> UC_Suggest : <<include>>
+UC_Tutorial <.. UC_RiskProfile : <<extend>>
+
+PowerUser <.. UC_Social : <<optional>>
+Beginner <.. UC_Social : <<optional>>
+
+@enduml
+```
+
+## Note Implementative per i Casi d'Uso
+
+### Attori Principali:
+- **Investitore Retail**: L'utente principale dell'applicazione
+- **Sistema Backend**: Gestisce logiche di business e calcoli
+- **API Mercati**: Fornisce dati storici e real-time
+- **Sistema di Storage**: Persistenza delle simulazioni
+
+### Tipologie di Relazioni:
+- **<<include>>**: Funzionalità sempre inclusa
+- **<<extend>>**: Funzionalità opzionale che estende il caso base
+- **<<optional>>**: Funzionalità disponibile ma non essenziale
+
+### Priorità di Implementazione:
+1. **Alta Priorità**: Dashboard, Configurazione, Simulazione, Risultati
+2. **Media Priorità**: Confronto, Backtesting, Salvataggio
+3. **Bassa Priorità**: Export avanzati, Ottimizzazioni AI, Social features
+
+### Vincoli e Regole di Business:
+- Allocazione ETF deve sempre sommare a 100%
+- Massimo 4 strategie confrontabili simultaneamente
+- Dati storici limitati agli ultimi 10 anni
+- Simulazioni salvate per massimo 1 anno
+- Export PDF limitato a 50 pagine
+
+
+
+
