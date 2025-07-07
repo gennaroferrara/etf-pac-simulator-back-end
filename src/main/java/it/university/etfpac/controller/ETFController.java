@@ -33,7 +33,7 @@ public class ETFController {
 
         List<ETFResponse> response = etfService.getAllETFs();
         return ResponseEntity.ok(ApiResponse.success(response,
-                String.format("Trovati %V5__Add_portfolio_id_to_simulations.sql ETF", response.size())));
+                String.format("Trovati %d ETF", response.size())));
     }
 
     @Operation(summary = "Recupera ETF per ID", description = "Restituisce i dettagli di un ETF specifico")
@@ -56,7 +56,7 @@ public class ETFController {
 
         List<ETFResponse> response = etfService.getETFsByRisk(riskLevel);
         return ResponseEntity.ok(ApiResponse.success(response,
-                String.format("Trovati %V5__Add_portfolio_id_to_simulations.sql ETF con rischio %s", response.size(), riskLevel)));
+                String.format("Trovati %d ETF con rischio %s", response.size(), riskLevel)));
     }
 
     @Operation(summary = "ETF con migliori performance", description = "Restituisce i top ETF per performance")
@@ -68,7 +68,7 @@ public class ETFController {
 
         List<ETFResponse> response = etfService.getTopPerformingETFs();
         return ResponseEntity.ok(ApiResponse.success(response,
-                String.format("Top %V5__Add_portfolio_id_to_simulations.sql ETF per performance", response.size())));
+                String.format("Top %d ETF per performance", response.size())));
     }
 
     @Operation(summary = "ETF a basso costo", description = "Restituisce ETF con spese di gestione contenute")
@@ -80,6 +80,6 @@ public class ETFController {
 
         List<ETFResponse> response = etfService.getLowCostETFs(maxExpense);
         return ResponseEntity.ok(ApiResponse.success(response,
-                String.format("Trovati %V5__Add_portfolio_id_to_simulations.sql ETF con spese ≤ %.2f%%", response.size(), maxExpense)));
+                String.format("Trovati %d ETF con spese ≤ %.2f%%", response.size(), maxExpense)));
     }
 }
