@@ -10,6 +10,43 @@ spring:
       connection-timeout: 30000
       idle-timeout: 300000
 
+  redis:
+    host: ${REDIS_HOST:redis}  # IMPORTANTE: usa 'redis' non 'localhost'
+    port: ${REDIS_PORT:6379}
+    timeout: 2000ms
+    lettuce:
+      pool:
+        max-active: 8
+        max-idle: 8
+        min-idle: 0
+
+  nginx:
+    image: nginx:alpine
+    container_name: etfpac-nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/conf.d:/etc/nginx/conf.d:ro
+      - ./nginx/ssl:/etc/nginx/ssl:ro
+      - nginx_cache:/var/cache/nginx
+    depends_on:
+      - app
+    networks:
+      - etfpac-network
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost/health" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  cache:
+    type: redis
+    redis:
+      time-to-live: 3600000  # 1 ora default
+      cache-null-values: false
+
   jpa:
     hibernate:
       ddl-auto: validate
@@ -34,14 +71,12 @@ logging:
     org.hibernate.SQL: WARN
   file:
     name: /app/logs/etfpac-simulator.log
-  pattern:
-    file: "%V5__Add_portfolio_id_to_simulations.sql{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
 
 management:
   endpoints:
     web:
       exposure:
-        include: health,info,metrics,prometheus
+        include: health,info,metrics,prometheus,caches
   endpoint:
     health:
       show-details: when-authorized
@@ -49,13 +84,3 @@ management:
     export:
       prometheus:
         enabled: true
-
-app:
-  simulation:
-    max-concurrent-executions: 8
-    timeout-minutes: 15
-    default-market-data-provider: "external"
-  cors:
-    allowed-origins: "*"
-    allowed-methods: "GET,POST,PUT,DELETE,OPTIONS"
-    allowed-headers: "*"

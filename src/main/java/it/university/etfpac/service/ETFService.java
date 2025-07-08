@@ -6,6 +6,7 @@ import it.university.etfpac.exception.ResourceNotFoundException;
 import it.university.etfpac.repository.ETFRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -20,8 +21,9 @@ public class ETFService {
 
     private final ETFRepository etfRepository;
 
+    @Cacheable("etfs")
     public List<ETFResponse> getAllETFs() {
-        log.info("Recupero tutti gli ETF");
+        log.info("CACHE MISS - Caricamento ETF da DATABASE");
         return etfRepository.findAll().stream()
                 .map(this::convertToResponse)
                 .collect(Collectors.toList());

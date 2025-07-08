@@ -4,6 +4,7 @@ import it.university.etfpac.dto.request.BacktestRequest;
 import it.university.etfpac.repository.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -22,6 +23,8 @@ public class BacktestService {
     private final UserRepository userRepository;
     private final SimulationEngine simulationEngine;
 
+    @Cacheable(value = "backtest",
+            key = "#request.strategy + '_' + #request.period + '_' + #request.etfAllocation.hashCode()")
     public Map<String, Object> runBacktest(BacktestRequest request) {
         log.info("Esecuzione backtest: {} strategia {} periodo {}",
                 request.getName(), request.getStrategy(), request.getPeriod());

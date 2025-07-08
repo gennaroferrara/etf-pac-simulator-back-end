@@ -9,6 +9,8 @@ import it.university.etfpac.exception.SimulationException;
 import it.university.etfpac.repository.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.annotation.CachePut;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.scheduling.annotation.Async;
@@ -33,9 +35,7 @@ public class SimulationService {
     private final SimulationDataRepository dataRepository;
     private final SimulationEngine simulationEngine;
 
-    /**
-     * Esegue una simulazione diretta senza salvarla nel database
-     */
+    @Cacheable(value = "calculations", key = "#request.hashCode()")
     public Map<String, Object> runSimulationDirect(SimulationRequest request) {
         log.info("Esecuzione diretta simulazione");
 
@@ -111,9 +111,7 @@ public class SimulationService {
         return response;
     }
 
-    /**
-     * Crea e salva una nuova simulazione
-     */
+    @CachePut(value = "simulations", key = "#result.id")
     public SimulationResponse createSimulation(SimulationRequest request) {
         log.info("Creazione nuova simulazione: {}", request.getName());
 
@@ -206,6 +204,7 @@ public class SimulationService {
     /**
      * Recupera una simulazione per ID
      */
+    @Cacheable(value = "simulations", key = "#id")
     @Transactional(readOnly = true)
     public SimulationResponse getSimulationById(Long id) {
         log.info("Recupero simulazione con ID: {}", id);
