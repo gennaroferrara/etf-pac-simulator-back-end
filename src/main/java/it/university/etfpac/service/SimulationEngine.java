@@ -185,21 +185,21 @@ public class SimulationEngine {
 
         List<SimulationData> simulationData = new ArrayList<>();
 
-        // Parametri di mercato
+        // I Parametri di mercato
         MarketFactors marketFactors = new MarketFactors();
 
         double totalValue = simulation.getInitialAmount();
         double totalInvested = simulation.getInitialAmount();
 
         for (int month = 0; month <= simulation.getInvestmentPeriod(); month++) {
-            // Calcola shock di mercato casuale
+            // Calcola lo shock di mercato casuale
             double marketShock = Math.random() < 0.05 ? (Math.random() - 0.5) * 0.3 : 0;
             double inflationAdjustment = Math.pow(1 + marketFactors.getInflation() / 12, month);
 
             double monthlyValue = 0;
             double monthlyReturn = 0;
 
-            // Calcola performance per ogni ETF nell'allocazione
+            // Calcola le  performance per ogni ETF nell'allocazione
             for (SimulationAllocation allocation : allocations) {
                 ETF etf = allocation.getEtf();
                 double percentage = allocation.getPercentage();
@@ -216,7 +216,7 @@ public class SimulationEngine {
                 }
             }
 
-            // Calcola investimento mensile con strategia selezionata
+            // Calcola l'investimento mensile con strategia selezionata
             double monthlyInvestment = month == 0 ? simulation.getInitialAmount() :
                     calculateMonthlyInvestment(simulation, month, monthlyReturn, totalValue, totalInvested);
 
@@ -245,7 +245,7 @@ public class SimulationEngine {
         return simulationData;
     }
 
-    // Classi helper
+    // ClassE helper
     private static class MarketFactors {
         private final double inflation = 0.02;
         private final double recessionProbability = 0.15;

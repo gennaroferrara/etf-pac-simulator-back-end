@@ -28,16 +28,16 @@ public class BacktestService {
 
         validateBacktestRequest(request);
 
-        // Calcola durata del backtest
+        // Calcola la durata del backtest
         long months = ChronoUnit.MONTHS.between(request.getStartDate(), request.getEndDate());
 
-        // Genera dati storici simulati
+        // Genera i  dati storici simulati
         List<BacktestDataPoint> historicalData = generateHistoricalData(request, (int) months);
 
-        // Esegui backtest con strategia selezionata
+        // Esegue il  backtest con strategia selezionata
         BacktestResults results = executeBacktest(request, historicalData);
 
-        // Confronta con benchmark
+        // Confronta con il benchmark
         BacktestResults benchmarkResults = executeBenchmarkBacktest(request, historicalData);
 
         Map<String, Object> response = new HashMap<>();
@@ -64,21 +64,20 @@ public class BacktestService {
         List<String> strategies = (List<String>) comparisonRequest.get("strategies");
 
         @SuppressWarnings("unchecked")
-        Map<String, Object> baseRequest = (Map<String, Object>) comparisonRequest.get("base_parameters");
+        Map<String, Object> baseParameters = (Map<String, Object>) comparisonRequest.get("base_parameters");
 
         Map<String, BacktestResults> strategyResults = new HashMap<>();
 
-        // Esegui backtest per ogni strategia
+        // Esegue il backtest per ogni strategia
         for (String strategy : strategies) {
-            BacktestRequest request = createBacktestRequestFromMap(baseRequest);
+            BacktestRequest request = createBacktestRequestFromMap(baseParameters);
             request.setStrategy(strategy);
             request.setName("Comparison_" + strategy);
 
             Map<String, Object> backtestResult = runBacktest(request);
-            strategyResults.put(strategy, (BacktestResults) backtestResult.get("results"));
+            strategyResults.put(strategy.toLowerCase(), (BacktestResults) backtestResult.get("results"));
         }
 
-        // Crea confronto
         Map<String, Object> comparison = new HashMap<>();
         comparison.put("strategies", strategies);
         comparison.put("results", strategyResults);
@@ -93,20 +92,34 @@ public class BacktestService {
     public Map<String, Object> getBacktestResults(Long backtestId) {
         log.info("Recupero risultati backtest ID: {}", backtestId);
 
-        // Simula recupero da database/cache
+        // Simula il recupero da database/cache
         Map<String, Object> results = new HashMap<>();
         results.put("backtest_id", backtestId);
         results.put("status", "COMPLETED");
         results.put("created_at", new Date());
 
-        // In una implementazione reale, recupereresti i dati dal database
-        // Per ora restituiamo dati simulati
         results.put("message", "Risultati backtest recuperati con successo");
 
         return results;
     }
 
     private void validateBacktestRequest(BacktestRequest request) {
+        // Controllo null safety
+        if (request == null) {
+            throw new IllegalArgumentException("BacktestRequest non può essere null");
+        }
+
+        // Imposta date di default se mancanti
+        if (request.getStartDate() == null) {
+            request.setStartDate(LocalDate.now().minusYears(5));
+            log.warn("StartDate mancante, impostata a: {}", request.getStartDate());
+        }
+
+        if (request.getEndDate() == null) {
+            request.setEndDate(LocalDate.now());
+            log.warn("EndDate mancante, impostata a: {}", request.getEndDate());
+        }
+
         // Validazione date
         if (request.getStartDate().isAfter(request.getEndDate())) {
             throw new IllegalArgumentException("Data inizio deve essere precedente alla data fine");
@@ -117,19 +130,34 @@ public class BacktestService {
         }
 
         // Validazione allocazioni
+        if (request.getEtfAllocation() == null || request.getEtfAllocation().isEmpty()) {
+            // Imposta allocazione di default
+            Map<String, Double> defaultAllocation = new HashMap<>();
+            defaultAllocation.put("world_equity", 60.0);
+            defaultAllocation.put("bonds", 20.0);
+            defaultAllocation.put("emerging", 15.0);
+            defaultAllocation.put("real_estate", 5.0);
+            request.setEtfAllocation(defaultAllocation);
+            log.warn("ETF allocation mancante, impostata allocazione di default");
+        }
+
         double totalAllocation = request.getEtfAllocation().values().stream()
                 .mapToDouble(Double::doubleValue)
                 .sum();
 
         if (Math.abs(totalAllocation - 100.0) > 0.01) {
-            throw new IllegalArgumentException("La somma delle allocazioni deve essere 100%");
+            throw new IllegalArgumentException("La somma delle allocazioni deve essere 100% (attuale: " + totalAllocation + "%)");
         }
 
-        // Validazione ETF esistenti
-        for (String etfId : request.getEtfAllocation().keySet()) {
-            if (!etfRepository.existsById(etfId)) {
-                throw new IllegalArgumentException("ETF non trovato: " + etfId);
+        // Validazione ETF esistenti - solo se repository è disponibile
+        try {
+            for (String etfId : request.getEtfAllocation().keySet()) {
+                if (!etfRepository.existsById(etfId)) {
+                    log.warn("ETF non trovato nel database: {}, continuo comunque", etfId);
+                }
             }
+        } catch (Exception e) {
+            log.warn("Impossibile validare ETF IDs: {}", e.getMessage());
         }
     }
 
@@ -289,12 +317,12 @@ public class BacktestService {
     private Map<String, Object> calculatePerformanceAttribution(BacktestRequest request, BacktestResults results) {
         Map<String, Object> attribution = new HashMap<>();
 
-        // Simula contributo di ogni ETF alla performance
+        // Simula il contributo di ogni ETF alla performance
         for (Map.Entry<String, Double> entry : request.getEtfAllocation().entrySet()) {
             String etfId = entry.getKey();
             Double allocation = entry.getValue();
 
-            // Simula contributo basato su allocazione e performance ETF
+            // Simula il  contributo basato su allocazione e performance ETF
             double contribution = (allocation / 100.0) * results.getTotalReturn() * (0.8 + Math.random() * 0.4);
             attribution.put(etfId, contribution);
         }
@@ -304,18 +332,83 @@ public class BacktestService {
 
     private BacktestRequest createBacktestRequestFromMap(Map<String, Object> baseRequest) {
         BacktestRequest request = new BacktestRequest();
-        // Mappa i parametri dalla mappa alla request
-        // Implementazione semplificata
-        request.setInitialAmount(((Number) baseRequest.get("initialAmount")).doubleValue());
-        request.setMonthlyAmount(((Number) baseRequest.get("monthlyAmount")).doubleValue());
-        // ... altri parametri
+
+        request.setInitialAmount(parseDouble(baseRequest.get("initialAmount")));
+        request.setMonthlyAmount(parseDouble(baseRequest.get("monthlyAmount")));
+
+        Object startDateObj = baseRequest.get("startDate");
+        if (startDateObj != null && startDateObj instanceof String) {
+            try {
+                request.setStartDate(LocalDate.parse((String) startDateObj));
+            } catch (Exception e) {
+                log.warn("Errore parsing startDate, uso default: {}", e.getMessage());
+                request.setStartDate(LocalDate.now().minusYears(5));
+            }
+        } else {
+            // Default a 5 anni fa
+            request.setStartDate(LocalDate.now().minusYears(5));
+        }
+
+        Object endDateObj = baseRequest.get("endDate");
+        if (endDateObj != null && endDateObj instanceof String) {
+            try {
+                request.setEndDate(LocalDate.parse((String) endDateObj));
+            } catch (Exception e) {
+                log.warn("Errore parsing endDate, uso default: {}", e.getMessage());
+                request.setEndDate(LocalDate.now());
+            }
+        } else {
+            // default a oggi
+            request.setEndDate(LocalDate.now());
+        }
+
+        @SuppressWarnings("unchecked")
+        Map<String, Object> etfAllocationRaw = (Map<String, Object>) baseRequest.get("etfAllocation");
+        Map<String, Double> etfAllocation = new HashMap<>();
+
+        if (etfAllocationRaw != null) {
+            for (Map.Entry<String, Object> entry : etfAllocationRaw.entrySet()) {
+                etfAllocation.put(entry.getKey(), parseDouble(entry.getValue()));
+            }
+            request.setEtfAllocation(etfAllocation);
+        } else {
+            //Allocazione di default
+            etfAllocation.put("world_equity", 60.0);
+            etfAllocation.put("bonds", 20.0);
+            etfAllocation.put("emerging", 15.0);
+            etfAllocation.put("real_estate", 5.0);
+            request.setEtfAllocation(etfAllocation);
+        }
+
+
+        request.setFrequency(parseString(baseRequest.get("frequency"), "MONTHLY"));
+        request.setPeriod(parseString(baseRequest.get("period"), "5Y"));
+        request.setRiskTolerance(parseString(baseRequest.get("riskTolerance"), "MODERATE"));
+        request.setRebalanceFrequency(parseString(baseRequest.get("rebalanceFrequency"), "QUARTERLY"));
+        request.setAutomaticRebalance(parseBoolean(baseRequest.get("automaticRebalance"), true));
+        request.setIncludeTransactionCosts(parseBoolean(baseRequest.get("includeTransactionCosts"), false));
+        request.setIncludeDividends(parseBoolean(baseRequest.get("includeDividends"), true));
+        request.setBenchmarkIndex(parseString(baseRequest.get("benchmarkIndex"), "SP500"));
+        request.setUserId(parseLong(baseRequest.get("userId"), 1L));
+
+        // Imposto altri campi richiesti con valori di default
+        request.setStopLoss(parseDouble(baseRequest.get("stopLoss")));
+        request.setTakeProfitTarget(parseDouble(baseRequest.get("takeProfitTarget")));
+
+        if (baseRequest.containsKey("transactionCostPercentage")) {
+            request.setTransactionCostPercentage(parseDouble(baseRequest.get("transactionCostPercentage")));
+        }
+
+        log.info("BacktestRequest creato: startDate={}, endDate={}, allocation={}",
+                request.getStartDate(), request.getEndDate(), request.getEtfAllocation());
+
         return request;
     }
 
     private Map<String, Object> createStrategySummary(Map<String, BacktestResults> strategyResults) {
         Map<String, Object> summary = new HashMap<>();
 
-        // Trova migliore e peggiore strategia
+        // Viene cercata la migliore e peggiore strategia
         String bestStrategy = strategyResults.entrySet().stream()
                 .max(Map.Entry.<String, BacktestResults>comparingByValue(
                         Comparator.comparing(BacktestResults::getTotalReturn)))
@@ -332,7 +425,7 @@ public class BacktestService {
         summary.put("worst_strategy", worstStrategy);
         summary.put("strategy_count", strategyResults.size());
 
-        // Calcola statistiche aggregate
+        // Calcolo delle  statistiche aggregate
         DoubleSummaryStatistics returnStats = strategyResults.values().stream()
                 .mapToDouble(BacktestResults::getTotalReturn)
                 .summaryStatistics();
@@ -373,6 +466,44 @@ public class BacktestService {
 
     private Long generateBacktestId() {
         return System.currentTimeMillis();
+    }
+
+    // Metodi helper per parsing sicuro
+    private Double parseDouble(Object value) {
+        if (value == null) return 0.0;
+        if (value instanceof Number) return ((Number) value).doubleValue();
+        if (value instanceof String) {
+            try {
+                return Double.parseDouble((String) value);
+            } catch (NumberFormatException e) {
+                return 0.0;
+            }
+        }
+        return 0.0;
+    }
+
+    private String parseString(Object value, String defaultValue) {
+        return value != null ? value.toString() : defaultValue;
+    }
+
+    private Boolean parseBoolean(Object value, Boolean defaultValue) {
+        if (value == null) return defaultValue;
+        if (value instanceof Boolean) return (Boolean) value;
+        if (value instanceof String) return Boolean.parseBoolean((String) value);
+        return defaultValue;
+    }
+
+    private Long parseLong(Object value, Long defaultValue) {
+        if (value == null) return defaultValue;
+        if (value instanceof Number) return ((Number) value).longValue();
+        if (value instanceof String) {
+            try {
+                return Long.parseLong((String) value);
+            } catch (NumberFormatException e) {
+                return defaultValue;
+            }
+        }
+        return defaultValue;
     }
 
     // Classi helper

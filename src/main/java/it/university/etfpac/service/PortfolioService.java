@@ -112,7 +112,7 @@ public class PortfolioService {
         portfolio.setMonthlyAmount(request.getMonthlyAmount());
         portfolio.setInvestmentPeriodMonths(request.getInvestmentPeriodMonths());
 
-        // Aggiorna allocazioni ETF
+        // Aggiorna allocazioni degli ETF
         Map<ETF, BigDecimal> newAllocations = new HashMap<>();
         for (Map.Entry<String, BigDecimal> entry : request.getEtfAllocations().entrySet()) {
             ETF etf = etfRepository.findById(entry.getKey())

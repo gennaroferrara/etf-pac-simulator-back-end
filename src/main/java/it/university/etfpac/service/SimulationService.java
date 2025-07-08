@@ -164,16 +164,16 @@ public class SimulationService {
             simulation.setStatus(Simulation.SimulationStatus.RUNNING);
             simulationRepository.save(simulation);
 
-            // Esegui simulazione
+            // Esegue la simulazione
             List<SimulationData> simulationData = simulationEngine.runSimulation(simulation);
 
-            // Salva dati simulazione
+            // Salva i dati simulazione
             dataRepository.saveAll(simulationData);
 
-            // Calcola metriche finali
+            // Calcola le metriche finali
             SimulationResults results = simulationEngine.calculateResults(simulationData);
 
-            // Aggiorna simulazione con risultati
+            // Aggiorna la simulazione con risultati
             simulation.setFinalValue(results.getFinalValue());
             simulation.setTotalInvested(results.getTotalInvested());
             simulation.setCumulativeReturn(results.getCumulativeReturn());
