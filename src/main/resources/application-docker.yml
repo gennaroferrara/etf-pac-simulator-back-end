@@ -20,27 +20,6 @@ spring:
         max-idle: 8
         min-idle: 0
 
-  nginx:
-    image: nginx:alpine
-    container_name: etfpac-nginx
-    ports:
-      - "80:80"
-      - "443:443"
-    volumes:
-      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
-      - ./nginx/conf.d:/etc/nginx/conf.d:ro
-      - ./nginx/ssl:/etc/nginx/ssl:ro
-      - nginx_cache:/var/cache/nginx
-    depends_on:
-      - app
-    networks:
-      - etfpac-network
-    healthcheck:
-      test: [ "CMD", "curl", "-f", "http://localhost/health" ]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-
   cache:
     type: redis
     redis:
