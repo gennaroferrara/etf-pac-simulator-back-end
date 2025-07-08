@@ -65,7 +65,6 @@ public class SimulationEngine {
 
             totalValue = monthlyValue > 0 ? monthlyValue : totalValue;
 
-            // Crea punto dati
             SimulationData dataPoint = new SimulationData();
             dataPoint.setSimulation(simulation);
             dataPoint.setMonth(month);

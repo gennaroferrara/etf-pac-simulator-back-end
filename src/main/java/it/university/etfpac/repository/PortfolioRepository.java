@@ -14,7 +14,6 @@ import java.util.List;
 @Repository
 public interface PortfolioRepository extends JpaRepository<Portfolio, Long> {
 
-    // Query per utente
     List<Portfolio> findByUserAndIsTemplateOrderByCreatedAtDesc(User user, Boolean isTemplate);
 
     List<Portfolio> findByUserOrIsTemplateOrderByCreatedAtDesc(User user, Boolean isTemplate);
@@ -23,7 +22,6 @@ public interface PortfolioRepository extends JpaRepository<Portfolio, Long> {
 
     Page<Portfolio> findByUserAndIsTemplate(User user, Boolean isTemplate, Pageable pageable);
 
-    // Query per template
     List<Portfolio> findByIsTemplateOrderByCreatedAtDesc(Boolean isTemplate);
 
     @Query("""

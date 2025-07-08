@@ -112,7 +112,7 @@ public class PortfolioService {
         portfolio.setMonthlyAmount(request.getMonthlyAmount());
         portfolio.setInvestmentPeriodMonths(request.getInvestmentPeriodMonths());
 
-        // Aggiorna allocazioni degli ETF
+        // Aggiorna le allocazioni degli ETF
         Map<ETF, BigDecimal> newAllocations = new HashMap<>();
         for (Map.Entry<String, BigDecimal> entry : request.getEtfAllocations().entrySet()) {
             ETF etf = etfRepository.findById(entry.getKey())
@@ -122,21 +122,6 @@ public class PortfolioService {
         portfolio.setEtfAllocations(newAllocations);
 
         return convertToResponse(portfolioRepository.save(portfolio));
-    }
-
-    public void deletePortfolio(Long id) {
-        Portfolio portfolio = portfolioRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Portfolio non trovato"));
-
-        /*
-        long activeSimulations = simulationRepository.countByPortfolioAndStatus(
-                portfolio, Simulation.SimulationStatus.RUNNING);
-
-        if (activeSimulations > 0) {
-            throw new BadRequestException("Portfolio con simulazioni attive non può essere eliminato");
-        } */
-
-        portfolioRepository.delete(portfolio);
     }
 
     public Map<String, Object> validateEtfAllocation(Map<String, Double> etfAllocation) {
@@ -404,7 +389,6 @@ public class PortfolioService {
         return compatibility;
     }
 
-    // Metodi di supporto privati semplificati
     private void validatePortfolioRequest(PortfolioRequest request) {
         BigDecimal totalAllocation = request.getEtfAllocations().values().stream()
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
@@ -543,17 +527,6 @@ public class PortfolioService {
                 })
                 .collect(Collectors.toList());
 
-      //  List<Simulation> recentSimulations = simulationRepository.findTop3ByPortfolioOrderByCreatedAtDesc(portfolio);
-        /*List<PortfolioResponse.SimulationSummary> simulationSummaries = recentSimulations.stream()
-                .map(sim -> PortfolioResponse.SimulationSummary.builder()
-                        .simulationId(sim.getId())
-                        .simulationName(sim.getName())
-                        .status(sim.getStatus().name())
-                        .finalReturn(sim.getCumulativeReturn())
-                        .createdAt(sim.getCreatedAt())
-                        .build())
-                .collect(Collectors.toList());
-*/
         return PortfolioResponse.builder()
                 .id(portfolio.getId())
                 .name(portfolio.getName())
@@ -588,4 +561,5 @@ public class PortfolioService {
                 //.recentSimulations(simulationSummaries)
                 .build();
     }
+
 }

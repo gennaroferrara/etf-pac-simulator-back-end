@@ -9,6 +9,8 @@ import it.university.etfpac.exception.SimulationException;
 import it.university.etfpac.repository.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -310,8 +312,6 @@ public class SimulationService {
         return comparison;
     }
 
-    // ==================== METODI PRIVATI DI SUPPORTO ====================
-
     /**
      * Valida i parametri della richiesta di simulazione
      */
@@ -515,6 +515,18 @@ public class SimulationService {
         }
 
         return new HashMap<>();
+    }
+
+    @Transactional(readOnly = true)
+    public Page<SimulationResponse> getAllSimulationsPaged(Pageable pageable) {
+        log.info("Recupero simulazioni con paginazione - page: {}, size: {}",
+                pageable.getPageNumber(), pageable.getPageSize());
+
+        // Usa findAll con Pageable per ottenere una Page<Simulation>
+        Page<Simulation> simulationPage = simulationRepository.findAll(pageable);
+
+        // Converti Page<Simulation> in Page<SimulationResponse>
+        return simulationPage.map(this::convertToResponse);
     }
 
     /**

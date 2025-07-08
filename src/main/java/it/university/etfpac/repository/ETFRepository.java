@@ -11,8 +11,6 @@ public interface ETFRepository extends JpaRepository<ETF, String> {
 
     List<ETF> findByRisk(ETF.RiskLevel risk);
 
-    List<ETF> findBySectorContaining(String sector);
-
     @Query("SELECT e FROM ETF e ORDER BY e.oneYear DESC")
     List<ETF> findTopPerformingETFs();
 

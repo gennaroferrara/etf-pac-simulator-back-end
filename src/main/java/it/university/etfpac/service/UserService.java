@@ -101,20 +101,6 @@ public class UserService {
         log.info("Utente eliminato con successo");
     }
 
-    public void incrementActiveSimulations(Long userId) {
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new ResourceNotFoundException("Utente non trovato con ID: " + userId));
-        user.setActiveSimulations(user.getActiveSimulations() + 1);
-        userRepository.save(user);
-    }
-
-    public void decrementActiveSimulations(Long userId) {
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new ResourceNotFoundException("Utente non trovato con ID: " + userId));
-        user.setActiveSimulations(Math.max(0, user.getActiveSimulations() - 1));
-        userRepository.save(user);
-    }
-
     private UserResponse convertToResponse(User user) {
         return UserResponse.builder()
                 .id(user.getId())

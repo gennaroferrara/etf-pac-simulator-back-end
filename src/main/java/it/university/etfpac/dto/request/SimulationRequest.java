@@ -8,14 +8,17 @@ import java.util.Map;
 public class SimulationRequest {
 
     @NotBlank(message = "Nome simulazione richiesto")
+    @Size(max = 255, message = "Nome non può superare 255 caratteri")
     private String name;
 
     @NotNull(message = "Importo iniziale richiesto")
     @DecimalMin(value = "100.0", message = "Importo iniziale minimo €100")
+    @Positive(message = "Importo iniziale deve essere positivo")
     private Double initialAmount;
 
     @NotNull(message = "Importo mensile richiesto")
     @DecimalMin(value = "50.0", message = "Importo mensile minimo €50")
+    @PositiveOrZero(message = "Importo mensile non può essere negativo")
     private Double monthlyAmount;
 
     @NotNull(message = "Periodo investimento richiesto")
@@ -24,9 +27,13 @@ public class SimulationRequest {
     private Integer investmentPeriod;
 
     @NotBlank(message = "Frequenza richiesta")
+    @Pattern(regexp = "MONTHLY|QUARTERLY|SEMIANNUAL|ANNUAL",
+            message = "Frequenza non valida")
     private String frequency;
 
     @NotBlank(message = "Strategia richiesta")
+    @Pattern(regexp = "DCA|VALUE_AVERAGING|MOMENTUM|CONTRARIAN|SMART_BETA|TACTICAL",
+            message = "Strategia non valida")
     private String strategy;
 
     @NotNull(message = "Allocazione ETF richiesta")
@@ -34,21 +41,48 @@ public class SimulationRequest {
     private Map<String, Double> etfAllocation;
 
     @NotBlank(message = "Tolleranza al rischio richiesta")
+    @Pattern(regexp = "CONSERVATIVE|MODERATE|AGGRESSIVE",
+            message = "Tolleranza rischio non valida")
     private String riskTolerance;
 
     @NotBlank(message = "Frequenza ribilanciamento richiesta")
+    @Pattern(regexp = "MONTHLY|QUARTERLY|SEMIANNUAL|ANNUAL",
+            message = "Frequenza ribilanciamento non valida")
     private String rebalanceFrequency;
 
     private Boolean automaticRebalance = true;
 
-    @DecimalMin(value = "0.0")
-    @DecimalMax(value = "50.0")
+    @DecimalMin(value = "0.0", message = "Stop loss non può essere negativo")
+    @DecimalMax(value = "50.0", message = "Stop loss non può superare 50%")
     private Double stopLoss;
 
-    @DecimalMin(value = "0.0")
-    @DecimalMax(value = "100.0")
+    @DecimalMin(value = "0.0", message = "Take profit non può essere negativo")
+    @DecimalMax(value = "100.0", message = "Take profit non può superare 100%")
     private Double takeProfitTarget;
 
     @NotNull(message = "ID utente richiesto")
+    @Positive(message = "ID utente deve essere positivo")
     private Long userId;
+
+    @AssertTrue(message = "La somma delle allocazioni ETF deve essere 100%")
+    public boolean isAllocationValid() {
+        if (etfAllocation == null || etfAllocation.isEmpty()) {
+            return true;
+        }
+        double sum = etfAllocation.values().stream()
+                .filter(value -> value != null)
+                .mapToDouble(Double::doubleValue)
+                .sum();
+        return Math.abs(sum - 100.0) < 0.01;
+    }
+
+    @AssertTrue(message = "Tutte le allocazioni ETF devono essere positive")
+    public boolean areAllAllocationsPositive() {
+        if (etfAllocation == null) {
+            return true;
+        }
+        return etfAllocation.values().stream()
+                .filter(value -> value != null)
+                .allMatch(value -> value >= 0);
+    }
 }

@@ -10,6 +10,9 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -18,7 +21,7 @@ import java.util.List;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/api/simulations")
+@RequestMapping("/api/v1/simulations")
 @RequiredArgsConstructor
 @Slf4j
 @CrossOrigin(origins = "*", maxAge = 3600)
@@ -31,7 +34,7 @@ public class SimulationController {
     @PostMapping("/run")
     public ResponseEntity<ApiResponse<Map<String, Object>>> runSimulation(
             @Valid @RequestBody SimulationRequest request) {
-        log.info("POST /api/simulations/run - Esecuzione simulazione");
+        log.info("POST /api/v1/simulations/run - Esecuzione simulazione");
 
         try {
             Map<String, Object> result = simulationService.runSimulationDirect(request);
@@ -47,7 +50,7 @@ public class SimulationController {
     @PostMapping
     public ResponseEntity<ApiResponse<SimulationResponse>> saveSimulation(
             @Valid @RequestBody SimulationRequest request) {
-        log.info("POST /api/simulations - Salvataggio simulazione");
+        log.info("POST /api/v1/simulations - Salvataggio simulazione");
 
         try {
             SimulationResponse response = simulationService.createSimulation(request);
@@ -63,42 +66,43 @@ public class SimulationController {
     @GetMapping("/{id}")
     public ResponseEntity<ApiResponse<SimulationResponse>> getSimulationById(
             @Parameter(description = "ID della simulazione") @PathVariable Long id) {
-        log.info("GET /api/simulations/{} - Recupero simulazione", id);
+        log.info("GET /api/v1/simulations/{} - Recupero simulazione", id);
 
         SimulationResponse response = simulationService.getSimulationById(id);
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 
-    @Operation(summary = "Lista simulazioni", description = "Restituisce tutte le simulazioni salvate")
+    @Operation(summary = "Lista simulazioni", description = "Restituisce tutte le simulazioni salvate con paginazione")
     @GetMapping
-    public ResponseEntity<ApiResponse<List<SimulationResponse>>> getAllSimulations(
+    public ResponseEntity<ApiResponse<Page<SimulationResponse>>> getAllSimulations(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
-        log.info("GET /api/simulations - Recupero tutte le simulazioni");
+        log.info("GET /api/v1/simulations - Recupero tutte le simulazioni (page: {}, size: {})", page, size);
 
-        List<SimulationResponse> response = simulationService.getAllSimulations();
+        Pageable pageable = PageRequest.of(page, size);
+        Page<SimulationResponse> response = simulationService.getAllSimulationsPaged(pageable);
         return ResponseEntity.ok(ApiResponse.success(response,
-                String.format("Trovate %d simulazioni", response.size())));
-    }
-
-    @Operation(summary = "Elimina simulazione", description = "Rimuove una simulazione salvata")
-    @DeleteMapping("/{id}")
-    public ResponseEntity<ApiResponse<Void>> deleteSimulation(
-            @Parameter(description = "ID della simulazione") @PathVariable Long id) {
-        log.info("DELETE /api/simulations/{} - Eliminazione simulazione", id);
-
-        simulationService.deleteSimulation(id);
-        return ResponseEntity.ok(ApiResponse.success(null, "Simulazione eliminata con successo"));
+                String.format("Trovate %d simulazioni", response.getTotalElements())));
     }
 
     @Operation(summary = "Confronta simulazioni", description = "Confronta performance di più simulazioni")
     @PostMapping("/compare")
     public ResponseEntity<ApiResponse<Map<String, Object>>> compareSimulations(
             @RequestBody Map<String, Object> comparisonRequest) {
-        log.info("POST /api/simulations/compare - Confronto simulazioni");
+        log.info("POST /api/v1/simulations/compare - Confronto simulazioni");
 
         @SuppressWarnings("unchecked")
         List<Long> simulationIds = (List<Long>) comparisonRequest.get("simulation_ids");
+
+        if (simulationIds == null || simulationIds.size() < 2) {
+            return ResponseEntity.badRequest()
+                    .body(ApiResponse.error("Almeno 2 simulazioni richieste per confronto"));
+        }
+
+        if (simulationIds.size() > 10) {
+            return ResponseEntity.badRequest()
+                    .body(ApiResponse.error("Massimo 10 simulazioni confrontabili"));
+        }
 
         Map<String, Object> comparison = simulationService.compareSimulations(simulationIds);
         return ResponseEntity.ok(ApiResponse.success(comparison, "Confronto completato"));
@@ -109,10 +113,12 @@ public class SimulationController {
     public ResponseEntity<ApiResponse<SimulationResponse>> cloneSimulation(
             @Parameter(description = "ID della simulazione da clonare") @PathVariable Long id,
             @RequestParam(required = false) String newName) {
-        log.info("POST /api/simulations/{}/clone - Clonazione simulazione", id);
+        log.info("POST /api/v1/simulations/{}/clone - Clonazione simulazione", id);
 
         SimulationResponse response = simulationService.cloneSimulation(id, newName);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.success(response, "Simulazione clonata con successo"));
     }
+
+
 }
