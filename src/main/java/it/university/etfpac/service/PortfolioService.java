@@ -557,8 +557,6 @@ public class PortfolioService {
                 .expectedReturn(BigDecimal.valueOf(calculateExpectedReturn(portfolio)))
                 .expectedVolatility(BigDecimal.valueOf(calculateVolatility(portfolio)))
                 .riskLevel(determineRiskLevel(calculateVolatility(portfolio), calculateBeta(portfolio)))
-            //    .simulationCount(recentSimulations.size())
-                //.recentSimulations(simulationSummaries)
                 .build();
     }
 
